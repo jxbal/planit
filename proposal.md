@@ -8,4 +8,4 @@ Owen Dewing, Kelly Tao, Juan Ballesteros <br/>
 - Multiple groups
 - Reminders
 - Location Integration
-  
+- Voting System/Suggestions/Recommendations

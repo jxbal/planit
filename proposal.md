@@ -9,3 +9,5 @@ Owen Dewing, Kelly Tao, Juan Ballesteros <br/>
 - Reminders
 - Location Integration
 - Voting System/Suggestions/Recommendations
+- React/Mobile App
+- HTML/CSS/JS

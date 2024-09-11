@@ -1,6 +1,9 @@
 Project Proposal <br/>
 Owen Dewing, Kelly Tao, Juan Ballesteros <br/>
 
+Project Description: <br/>
+For our project, we have decided to build a mobile-based scheduling app to facilitate group projects, weekend hangouts, family reunions and more. 
+
 - Group scheduling
 - Import existing calendars (Google, Outlook, Apple, etc.)
 - Form different groups

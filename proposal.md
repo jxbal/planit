@@ -10,19 +10,15 @@ We believe that this project exemplifies knowledge from throughout our CMSI cour
 Presentation: <br/>
 https://docs.google.com/presentation/d/11xUUkCZboja5uCimCJkow7gxIugzoYtDwB1THop2SFE/edit#slide=id.p
 
-
+Some features we want to implement:
 - Group scheduling
 - Import existing calendars (Google, Outlook, Apple, etc.)
-- Form different groups
-- Specific availability button
-- Multiple groups
-- Reminders
+- Specific availability button (highliting the times everyone has free)
+- Ability to join multiple groups
+- Reminders (reminding users 15-30 minutes before an event)
 - Location Integration
-- Voting System/Suggestions/Recommendations
-- React/Mobile App
-- HTML/CSS/JS
+- Voting System/Suggestions/Recommendations for future events
 - Time zone support: automatically adjust for users in different time zones
-- Use AI to predict (based on past) when users will be busy
 - Mark certain times as preferred (set priority)
 - Calendar themes
 - Set group event as recurring (ex: game night), and automatically populate next coming weeks

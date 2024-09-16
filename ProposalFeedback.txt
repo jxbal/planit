@@ -1,0 +1,35 @@
+CMSI 4071 Fall 2024
+Project Proposal Feedback
+Project: PlanIt
+=========================
+Proposal Document [2 points]:
+Nice work here, a very complete description in the first paragraph, and a
+good justification for the project in the second paragraph.  There are quite
+a few calendar applications 'out there' so you'll need to find things about
+your application to stress to make it seem truly different.
+
+A couple of questions arise:
+   1. What makes this application REALLY different from something like
+      Doodle or Calendly or YouCanBookMe?
+   2. There is a LOT here ~ are there some parts that you can designate
+      as 'more important' so that you can prioritize and 'de-scope' some
+      things that may need to be put on the product backlog?
+   3. Are there any security issues with updating across other peoples'
+      calendars?  I'm thinking back to when Facebook's 3rd party company
+      got exploited ~ what will you do to provide security as that 3rd
+      party application?
+   4. Will users have a choice for calendar sync'ing?  Will it be opt-in
+      or opt-out?
+
+Proposal Presentation [3 points]:
+Nice work on the presentation from all three of you.  I like that you all
+participated and knew which part was assigned to whom.  One thing to give
+a little more focus is in the Q&A portion.  Try to let everyone answer
+questions so you appear as a cohesive team.
+
+
+Summary:
+--------
+Total: 5% out of %5 for this deliverable.
+
+Very nice job overall!  Keep up the good work.

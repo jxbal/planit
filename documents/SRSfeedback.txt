@@ -1,0 +1,53 @@
+
+Documentation Feedback ~ Deliverable #2
+Software Requirements Specification
+Initial Development Schedule
+CMSI 4071 Fall 2024
+=======================================
+
+COMPONENT BREAKDOWN:
+   Excellent job on this section, as well as with the introduction.
+
+FUNCTIONAL REQUIREMENTS:
+   Since you are doing a waterfall-style document, you'll need to be a wee
+   bit more specific in your requirements language.  For example, you have:
+
+      3.1.1.1 The login page shall log users into the app.
+
+   This is a good start, but omits what the user must do/see to accomplish
+   the task.  A more specific way of doing this is:
+
+      3.1.1.1 The login page shall provide users with a labeled text entering
+              field for entering a user name.
+      3.1.1.2 The login page shall provide users with a labeled text entering
+              field for entering a password.
+      3.1.1.3 The login page shall provide users with a labeled button which
+              will cause the two entry fields to be read by the application.
+      3.1.1.4 The login page shall send the user data to the backend CSU for
+              credential verification.
+
+   This is the level of detail at which the development team can actually
+   begin to code the appication's parts.
+
+PERFORMANCE REQUIREMENTS:
+   Not provided.
+
+ENVIRONMENT REQUIREMENTS:
+   Not provided.
+
+OVERALL ASSESSMENT:
+   Category                          Points
+   Component Breakdown                 1/1
+   Functional Requirements             4/4
+   Performance Requirements            0/2
+   Environment Requirements            0/1
+                                     =====
+   Subtotal                            5/8
+   Preliminary Schedule                2/2
+   ------------------------------------------------------
+   Total Percentage:   7/10 = 70% which is a C
+
+Make sure you add the two missing sections and do a few updates to the
+functional requirements section by the end of the semester for full credit
+on this document.
+

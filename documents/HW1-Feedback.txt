@@ -1,0 +1,35 @@
+
+Essay Feedback
+Homework Assignment #1
+CMSI 4071 Fall 2024
+======================
+
+SUMMARY:
+   Excellent synopsis of the article, you got all the main points!
+
+CRITICAL THINKING:
+   Relation to S/W engineering:
+      You nailed the point about interacting with the larger 'ecosystem' of
+      the device's operation, and how weakness can be exploited at any level
+      of operation.  I like your reference to "secure coding practices"!
+
+   Thoughts/opinions presented:
+      I agree, it is 'eye-opening' to find out these facts ~ even a bit
+      scary.  Your closing is a good call for everyone to be aware.
+
+      Nice work!
+
+
+OVERALL ASSESSMENT:
+   Category                          Points
+   Summary of article                  25
+   Relation to S/W engineering         25
+   Thoughts/opinions presented         25
+   Spelling/Grammar                    25
+                                     -----
+   Subtotal                           100
+   ------------------------------------------------------
+   Total Percentage:   100 out of 100 which is an A-plus
+
+
+

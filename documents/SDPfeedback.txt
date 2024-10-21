@@ -1,0 +1,40 @@
+
+Documentation Feedback ~ Deliverable #3
+Software Development Plan
+CMSI 4071 Fall 2024
+=======================================
+
+INTRODUCTION/DELIVERABLES SECTION:
+   The introduction is perfect!
+   The deliverables section needs to add the tasks for your project so that
+      they are specifically accounted for.  NOT the schedule, just the tasks
+      and brief descriptions.
+
+PROJECT RESOURCES SECTION:
+   Excellent job here, nothing to add.
+
+PROJECT ORGANIZATION SECTION:
+   Excellent job here, nothing to add.
+
+PROJECT SCHEDULE SECTION:
+   The link to the second document is a good way to access the schedule.  I
+      also like the way you have laid it out as a bullet list rather than
+      a Gantt chart here.  You also did a PERT chart, which is admirable ~
+      not many people choose that option since it's not linear.
+   Excellent job here, nothing to add.
+
+OVERALL ASSESSMENT:
+   Category                          Points
+   Project Deliverables               0.5
+   Project Resources                  1.0
+   Project Organization               1.0
+   Project Schedule                   2.0
+                                     =====
+   Subtotal                           4.5
+   ------------------------------------------------------
+   Total Percentage: 4.5/5 = 90% which is an A-minus
+
+Add those tasks into the deliverables section by the end of the semester for
+full credit on this document.
+
+Nice job!

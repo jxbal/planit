@@ -13,6 +13,6 @@ const styles = StyleSheet.create({
     mainPage: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 5,
     },
   });

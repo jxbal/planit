@@ -1,0 +1,32 @@
+
+Documentation Feedback ~ Deliverable #4
+Software Design Document ~ Architecture
+CMSI 4071 Fall 2024
+=======================================
+
+SDD: ARCHITECTURAL DESIGN SECTION:
+   Major software components section
+   Major software interactions section
+   Architectural design diagrams section
+
+OVERALL ASSESSMENT:
+   Category                          Points
+   --------------------------------  ---------
+   ARCHITECTURAL DESIGN SECTION:
+   Major software components            2 of 2
+   Major software interactions          2 of 2
+   Architectural design diagrams        6 of 6
+                                     ======
+   Subtotal                            10
+   ------------------------------------------------------
+   Total Percentage:  10/10 = 100% which is an A-plus
+
+============================================================================
+COMMENTS
+Nice job on this preliminary document!  A couple of comments:
+
+Assuming this is the SDD for your pivoted project, this is very good work.
+The diagrams are very nice and show the parts and how they are associated so
+the software will work.
+
+Nothing else to do on this section.  Good job and keep up the good work!

@@ -1,0 +1,33 @@
+
+
+HW 2 - Piloni & Miles Textbook
+CMSI 4071 Fall 2024
+
+Category        Weight     Earned
+===========    ========    ======
+Problem 1      [3 pts.]      3.0
+Problem 2      [4 pts.]      4.0
+Problem 3      [6 pts.]      6.0
+Problem 4      [9 pts.]      9.0
+Problem 5      [2 pts.]      2.0
+Problem 6      [7 pts.]      7.0
+Problem 7      [1 pt.]       1.0
+Problem 8      [3 pts.]      3.0
+Problem 9      [5 pts.]      5.0
+Problem 10     [4 pts.]      4.0
+
+      Subtotal [44 max]     44.0
+             Your Total     44.0
+
+         Letter grade   A-plus
+======================================
+COMMENTS:
+
+good example on problem three with the CDR being something from waterfall
+that isn't needed in Agile.  I agree that with increased involvement of the
+customer this isn't needed in iterative project development.
+
+thanks for the elucidation about "CMake".  I haven't used it but it's good
+to know some of the pratfalls before I start.
+
+nice work!

@@ -16,7 +16,7 @@ export default function SignUp() {
       .then((userCredential) => {
         const user = userCredential.user;
         Alert.alert('Sign Up Successful', 'Welcome!');
-        router.push('/login');
+        router.replace('/(auth)');
       })
       .catch((error) => {
         const errorCode = error.code;

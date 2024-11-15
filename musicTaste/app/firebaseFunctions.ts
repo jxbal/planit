@@ -1,5 +1,5 @@
 // firebaseFunctions.ts
-import { db } from './firebase';
+import { db } from '../firebaseConfig';
 import firebase from 'firebase/app';
 import { DocumentData } from 'firebase/firestore';
 

@@ -8,6 +8,7 @@ import { auth } from "../../firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
 
 const CLIENT_ID = "d442d42b1e6f4b37ad8305f045d5d160";
+const CLIENT_SECRET = "9f641cacf31e4745a6fd9a0d3de5e951";
 
 const developmentRedirectURI = AuthSession.makeRedirectUri({
   scheme: "musictaste",

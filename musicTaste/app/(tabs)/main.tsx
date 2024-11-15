@@ -35,7 +35,6 @@ export default function MainPage() {
     }
 
     const openModal = () => {
-        Alert.alert('Floating Button pressed');
         setPostModalVisible(true);
         setPostButtonVisible(false);
     }
@@ -85,7 +84,7 @@ export default function MainPage() {
             );
 
             const data = await response.json();
-            
+
             if (data.tracks) {
                 setTracks(data.tracks.items);
             }
@@ -128,8 +127,7 @@ export default function MainPage() {
                     animationType='slide'
                     transparent={true}
                     visible={postModalVisible}
-                    onRequestClose={closeModal}
-                >
+                    onRequestClose={closeModal}                >
                     <ThemedView style={styles.postView}>
                         <ThemedText style={styles.postText}>New Post</ThemedText>
                         <Pressable
@@ -220,12 +218,12 @@ const styles = StyleSheet.create({
     },
     postButton: {
         position: 'absolute',
-        width: 60,
-        height: 60,
+        width: 80,
+        height: 80,
         alignItems: 'center',
         justifyContent: 'center',
         right: 0,
-        top: 0
+        top: 10
     },
     postText: {
         color: 'black',
@@ -247,7 +245,7 @@ const styles = StyleSheet.create({
         top: 0
     },
     searchContainer: {
-        width: '90%',
+        width: '92%',
         marginTop: 20,
         position: 'relative',
     },
@@ -307,10 +305,12 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     postView: {
-        margin: 50,
+        margin: 20,
+        marginTop: 50,
         backgroundColor: 'white',
         borderRadius: 20,
-        height: 600,
+        height: 630,
+        width: 350,
         // padding: 200,
         alignItems: 'center',
         shadowColor: '#000',

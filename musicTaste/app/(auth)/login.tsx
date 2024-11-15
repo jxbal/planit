@@ -48,7 +48,6 @@ const LoginPage: React.FC = () => {
       scopes: SCOPES,
       redirectUri: REDIRECT_URI,
       responseType: ResponseType.Token,
-      // Add extra parameters as needed
       extraParams: {
         show_dialog: "true",
       },

@@ -1,42 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { View, TextInput, Button, StyleSheet, Text, Alert } from 'react-native';
-import * as AuthSession from 'expo-auth-session';
-import { ResponseType } from 'expo-auth-session';
-import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+import React, { useState, useEffect } from "react";
+import { View, TextInput, Button, StyleSheet, Text, Alert } from "react-native";
+import * as AuthSession from "expo-auth-session";
+import { ResponseType } from "expo-auth-session";
+import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
-const CLIENT_ID = 'd442d42b1e6f4b37ad8305f045d5d160';
+const CLIENT_ID = "d442d42b1e6f4b37ad8305f045d5d160";
 
 const developmentRedirectURI = AuthSession.makeRedirectUri({
-  scheme: 'musictaste',
-  path: 'spotify-auth',
+  scheme: "musictaste",
+  path: "spotify-auth",
 });
 
 // Production URI
 const productionRedirectURI = AuthSession.makeRedirectUri({
-  scheme: 'musictaste',
-  path: 'spotify-auth',
+  scheme: "musictaste",
+  path: "spotify-auth",
 });
 
 // Log both URIs to see what needs to be registered
-console.log('Development Redirect URI:', developmentRedirectURI);
-console.log('Production Redirect URI:', productionRedirectURI);
+console.log("Development Redirect URI:", developmentRedirectURI);
+console.log("Production Redirect URI:", productionRedirectURI);
 
 // Use the development URI during development
 const REDIRECT_URI = developmentRedirectURI;
 
-const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
-const RESPONSE_TYPE = 'token';
+const AUTH_ENDPOINT = "https://accounts.spotify.com/authorize";
+const RESPONSE_TYPE = "token";
 const SCOPES = [
-  'user-read-private',
-  'user-read-email'
+  "user-read-private",
+  "user-read-email",
   // Add other scopes as needed
 ];
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   // Configure the authentication request
@@ -48,7 +49,7 @@ const LoginPage: React.FC = () => {
       responseType: ResponseType.Token,
       // Add extra parameters as needed
       extraParams: {
-        show_dialog: 'true'
+        show_dialog: "true",
       },
     },
     {
@@ -57,49 +58,62 @@ const LoginPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (response?.type === 'success') {
+    if (response?.type === "success") {
       const { access_token } = response.params;
-      SecureStore.setItemAsync('spotify_token', access_token)
+      SecureStore.setItemAsync("spotify_token", access_token)
         .then(() => {
-          Alert.alert('Success', 'Successfully logged in with Spotify!');
-          router.replace('/(tabs)');
+          Alert.alert("Success", "Successfully logged in with Spotify!");
+          router.replace("/(tabs)");
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Error storing the access token", error);
-          Alert.alert('Storage Error', 'Failed to save token securely');
+          Alert.alert("Storage Error", "Failed to save token securely");
         });
-    } else if (response?.type === 'error') {
+    } else if (response?.type === "error") {
       Alert.alert(
-        'Authentication error',
-        response.error?.message || 'Something went wrong'
+        "Authentication error",
+        response.error?.message || "Something went wrong"
       );
     }
   }, [response]);
 
   const handleLogin = () => {
-    if (email === 'test@example.com' && password === 'password123') {
-      Alert.alert('Login Successful', 'Welcome!');
+
+  const auth = getAuth();
+  signInWithEmailAndPassword(auth, email, password)
+    .then((userCredential) => {
+      const user = userCredential.user;
+    })
+    .catch((error) => {
+      const errorCode = error.code;
+      const errorMessage = error.message;
+    });
+
+    if (email === "test@example.com" && password === "password123") {
+      Alert.alert("Login Successful", "Welcome!");
     } else {
-      Alert.alert('Login Failed', 'Invalid email or password');
+      Alert.alert("Login Failed", "Invalid email or password");
     }
   };
+
+  const handleSignUp = () => {};
 
   const handleSpotifyLogin = async () => {
     try {
       const result = await promptAsync();
-      if (result.type === 'error') {
-        console.error('Auth error:', result.error);
+      if (result.type === "error") {
+        console.error("Auth error:", result.error);
       }
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Error', 'Failed to initialize Spotify login');
+      console.error("Login error:", error);
+      Alert.alert("Error", "Failed to initialize Spotify login");
     }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
-      
+
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -116,6 +130,7 @@ const LoginPage: React.FC = () => {
         secureTextEntry
       />
       <Button title="Login" onPress={handleLogin} />
+      <Button title="Sign Up" onPress={handleSignUp} />
 
       <View style={styles.separator} />
       <Button
@@ -137,20 +152,20 @@ const LoginPage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   input: {
     height: 50,
-    backgroundColor: '#fff',
-    borderColor: '#ddd',
+    backgroundColor: "#fff",
+    borderColor: "#ddd",
     borderWidth: 1,
     marginBottom: 10,
     paddingHorizontal: 10,
@@ -162,7 +177,7 @@ const styles = StyleSheet.create({
   tokenText: {
     marginTop: 10,
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
 });
 

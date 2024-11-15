@@ -1,10 +1,12 @@
 // app/signup.js
 import { View, Text, TextInput, Button, Alert } from 'react-native';
 import { useState } from 'react';
+import { useRouter } from "expo-router";
 import { auth } from "../../firebaseConfig";
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 export default function SignUp() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
@@ -14,6 +16,7 @@ export default function SignUp() {
       .then((userCredential) => {
         const user = userCredential.user;
         Alert.alert('Sign Up Successful', 'Welcome!');
+        router.push('/login');
       })
       .catch((error) => {
         const errorCode = error.code;

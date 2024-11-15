@@ -4,7 +4,8 @@ import * as AuthSession from "expo-auth-session";
 import { ResponseType } from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const CLIENT_ID = "d442d42b1e6f4b37ad8305f045d5d160";
 
@@ -78,25 +79,35 @@ const LoginPage: React.FC = () => {
   }, [response]);
 
   const handleLogin = () => {
-
-  const auth = getAuth();
-  signInWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
-      const user = userCredential.user;
-    })
-    .catch((error) => {
-      const errorCode = error.code;
-      const errorMessage = error.message;
-    });
-
-    if (email === "test@example.com" && password === "password123") {
-      Alert.alert("Login Successful", "Welcome!");
-    } else {
-      Alert.alert("Login Failed", "Invalid email or password");
-    }
+    // Perform the sign-in with Firebase authentication
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        // If the login is successful, show an alert with a welcome message
+        const user = userCredential.user;
+        Alert.alert("Login Successful", `Welcome, ${user.email || 'user'}!`);
+        router.replace("/(tabs)");
+      })
+      .catch((error) => {
+        // Handle errors and display appropriate error messages
+        const errorCode = error.code;
+        const errorMessage = error.message;
+  
+        // Customize alert messages based on Firebase error codes
+        if (errorCode === 'auth/invalid-email') {
+          Alert.alert("Login Failed", "Invalid email address format.");
+        } else if (errorCode === 'auth/user-not-found') {
+          Alert.alert("Login Failed", "No user found with this email.");
+        } else if (errorCode === 'auth/wrong-password') {
+          Alert.alert("Login Failed", "Incorrect password.");
+        } else {
+          Alert.alert("Login Failed", errorMessage);
+        }
+      });
   };
 
-  const handleSignUp = () => {};
+  const handleSignUp = () => {
+    router.push('/signup');
+  };
 
   const handleSpotifyLogin = async () => {
     try {

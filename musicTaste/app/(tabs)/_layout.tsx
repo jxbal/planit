@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 
 import { TabBarIcon } from '@/components/navigation/TabBarIcon';
+import Entypo from '@expo/vector-icons/Entypo';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -29,6 +30,15 @@ export default function TabLayout() {
           title: 'Main',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'musical-notes' : 'musical-notes-outline'} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
+          tabBarIcon: ({ color, focused }) => (
+            <Entypo name="chat" size={24} color="black" />
           ),
         }}
       />

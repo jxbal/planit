@@ -5,6 +5,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import SpotifyAuth from "../../spotifySongSearch";
 
 const friendsList = ["owen", "johnson", "kelly", "juan", "joanna", "friend", "friend", "friend"];
 //when we have friends list from database, we can fill this list dynamically
@@ -29,6 +30,14 @@ export default function MainPage() {
     const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
+    
+    const [accessToken, setAccessToken] = useState(null);
+
+    const handleTokenFetched = (token) => {
+        if (!accessToken) {
+            setAccessToken(token);
+          }
+      };
 
     const handleContentSizeChange = (width: number) => {
         setButtonVisible(width > windowWidth);
@@ -45,23 +54,7 @@ export default function MainPage() {
         setPostButtonVisible(true);
     }
 
-    useEffect(() => {
-        const getToken = async () => {
-          try {
-            const token = await SecureStore.getItemAsync('spotify_token');
-            if (token) {
-              console.log("Access Token in MainPage:", token);
-            } else {
-              console.log("No access token found.");
-            }
-          } catch (error) {
-            console.error("Error retrieving access token", error);
-          }
-        };
-        getToken();
-      }, []);
-
-      const searchSpotify = async (query: string) => {
+    const searchSpotify = async (query: string) => {      
         if (!query.trim()) {
             setTracks([]);
             return;
@@ -69,8 +62,8 @@ export default function MainPage() {
 
         setIsLoading(true);
         try {
-            const token = await SecureStore.getItemAsync('spotify_token');
-            if (!token) {
+            // const token = await SecureStore.getItemAsync('spotify_token');
+            if (!accessToken) {
                 console.error('No Spotify token found');
                 return;
             }
@@ -79,7 +72,7 @@ export default function MainPage() {
                 `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`,
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        Authorization: `Bearer ${accessToken}`,
                     },
                 }
             );
@@ -116,6 +109,7 @@ export default function MainPage() {
     return (
         <ScrollView style={styles.mainScroll}>
             <ThemedView style={styles.mainPage}>
+            <SpotifyAuth onTokenFetched={handleTokenFetched} />
                 {postButtonVisible && (
                     <TouchableOpacity
                         style={styles.postButton}

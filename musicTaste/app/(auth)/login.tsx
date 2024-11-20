@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { auth } from "../../firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import axios from "axios";
 
 const CLIENT_ID = "d442d42b1e6f4b37ad8305f045d5d160";
 const CLIENT_SECRET = "9f641cacf31e4745a6fd9a0d3de5e951";
@@ -33,6 +34,8 @@ const RESPONSE_TYPE = "token";
 const SCOPES = [
   "user-read-private",
   "user-read-email",
+  "user-read-currently-playing",
+  "user-read-playback-state",
   // Add other scopes as needed
 ];
 
@@ -49,7 +52,6 @@ const LoginPage: React.FC = () => {
       scopes: SCOPES,
       redirectUri: REDIRECT_URI,
       responseType: ResponseType.Token,
-      // Add extra parameters as needed
       extraParams: {
         show_dialog: "true",
       },
@@ -65,6 +67,7 @@ const LoginPage: React.FC = () => {
       SecureStore.setItemAsync("spotify_token", access_token)
         .then(() => {
           Alert.alert("Success", "Successfully logged in with Spotify!");
+          fetchSpotifyUserID(access_token);
           router.replace("/(tabs)");
         })
         .catch((error) => {
@@ -78,6 +81,21 @@ const LoginPage: React.FC = () => {
       );
     }
   }, [response]);
+
+  const fetchSpotifyUserID = async (accessToken: string) => {
+    try {
+      const userInfoResponse = await axios.get('https://api.spotify.com/v1/me', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const spotifyUserID = userInfoResponse.data.id;
+      await SecureStore.setItemAsync("userProfile", spotifyUserID);
+      console.log("Spotify user ID stored as userProfile:", spotifyUserID);
+    } catch (error) {
+      console.error("Error fetching Spotify user ID:", error);
+    }
+  };
 
   const handleLogin = () => {
     signInWithEmailAndPassword(auth, email, password)

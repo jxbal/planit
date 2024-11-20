@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,44 +8,59 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  TextInput,
 } from "react-native";
 import { db, auth } from "../../firebaseConfig";
 import { getDoc, doc } from "firebase/firestore";
+import { FadeInRight } from "react-native-reanimated";
 
 const Chat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [friendList, setFriendList] = useState([]);
   const [currentChatName, setCurrentChatName] = useState([]);
-  const [currentChat, setCurrentChat] = useState([]);
-
+  const [currentChatContent, setCurrentChatContent] = useState([]);
+  const [currentChatNickName, setCurrentChatNickName] = useState([]);
+  const scrollViewRef = useRef(null);
   const toggleSlider = () => setIsOpen(!isOpen);
-
+  const userID = auth.currentUser.uid;
 
   const handleFriendSelect = async (friend) => {
     let chatRef;
-    if (friend.UID.localeCompare(auth.currentUser.uid) > 0) {
-        chatRef = doc(db, "chats", `${auth.currentUser.uid + friend.UID}`);
-        console.log(auth.currentUser.uid + friend.UID)
-      }      
-    else{
-        chatRef = doc(db, "chats", `${friend.UID + auth.currentUser.uid}`);
-        console.log(friend.UID + auth.currentUser.uid)
+    if (friend.UID.localeCompare(userID) > 0) {
+      chatRef = doc(db, "chats", `${userID + friend.UID}`);
+    } else {
+      chatRef = doc(db, "chats", `${friend.UID + userID}`);
     }
     const chatSnap = await getDoc(chatRef);
-    setCurrentChat(chatSnap.data());
-    console.log(currentChat)
-    if ('name' in currentChat && currentChat.name != "") {
-        setCurrentChatName(currentChat.name);
+    const currentChat = chatSnap.data();
+    setCurrentChatNickName(currentChat.nickname);
+    setCurrentChatContent(currentChat.content);
+    if ("name" in currentChat && currentChat.name != "") {
+      setCurrentChatName(currentChat.name);
+    } else {
+      setCurrentChatName(friend.name);
     }
-    else{
-        setCurrentChatName(friend.name);
-    }
-  }
+  };
 
-  const displayChat = () => {
-    if(currentChat)
-  }
+  const [inputMessage, setInputMessage] = useState("");
+
+  const handleSendMessage = () => {
+    if (inputMessage.trim()) {
+      // Logic to add the message to the current chat
+      const newMessage = {
+        user: userID, // Replace with the current user's UID
+        dialog: inputMessage.trim(),
+        timestamp: Date.now(),
+      };
+
+      // Add the new message to the chat (pseudo-code, adjust for your DB logic)
+      const updatedChatContent = [...currentChatContent, newMessage];
+      setCurrentChatContent(updatedChatContent);
+
+      setInputMessage("");
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -53,7 +68,7 @@ const Chat = () => {
       const fetchedFriends = [];
       if (user) {
         // Reference to the specific user profile by UID
-        const userRef = doc(db, "profiles", `${auth.currentUser.uid}`);
+        const userRef = doc(db, "profiles", `${userID}`);
         const docSnap = await getDoc(userRef);
         if (docSnap.exists()) {
           for (let i = 0; i < docSnap.data().friend.length; i++) {
@@ -67,7 +82,7 @@ const Chat = () => {
             fetchedFriends.push({
               name: friendSnap.data().username,
               imgPath: imgPath,
-              UID : friendUID,
+              UID: friendUID,
             });
           }
           setFriendList(fetchedFriends);
@@ -96,11 +111,11 @@ const Chat = () => {
   const firstItemHeight = 80; // Adjust this value based on your item's height
 
   return (
-    <View style={[styles.container, isOpen ? styles.open : null]}>
+    <View style={[styles.containerRow, isOpen ? styles.open : null]}>
       <View style={styles.slider}>
         <ScrollView
           contentContainerStyle={[
-            styles.scrollView,
+            styles.scrollViewSide,
             {
               paddingTop: (screenHeight - firstItemHeight) / 2 - 80, // This centers the first item
             },
@@ -118,18 +133,70 @@ const Chat = () => {
           <Text style={styles.buttonText}>☰</Text>
         </TouchableOpacity>
       </View>
-
-      <View style={styles.content}>
+      <View style={styles.container}>
         <Text style={styles.header}>{currentChatName}</Text>
+        {/* Chat Messages */}
+        <ScrollView
+          contentContainerStyle={styles.scrollView}
+          ref={scrollViewRef}
+          onContentSizeChange={() =>
+            scrollViewRef.current?.scrollToEnd({ animated: true })
+          }
+        >
+          {currentChatContent &&
+            currentChatContent
+              .slice()
+            //   .reverse()
+              .map((dialogInfo, index) => {
+                const isUserMessage = dialogInfo.user === userID;
+                return(
+                <View key={index} style={styles.messageContainer}>
+                  <View style={[styles.row, isUserMessage && styles.rightRow]}>
+                    <Image
+                      source={require("../../assets/images/1.png")}
+                      style={styles.itemImage}
+                    />
+                    <Text style={styles.usernameText}>
+                        {currentChatNickName[dialogInfo.user]}
+                    </Text>
+                  </View>
+                  <View style={styles.messageBox}>
+                    <Text style={styles.messageText}>{dialogInfo.dialog}</Text>
+                  </View>
+                </View>
+                );
+              })}
+        </ScrollView>
+
+        {/* Input Box */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Type your message..."
+            value={inputMessage}
+            onChangeText={setInputMessage}
+          />
+          <TouchableOpacity
+            style={styles.sendButton}
+            onPress={handleSendMessage}
+          >
+            <Text style={styles.sendButtonText}>Send</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row", // Makes the layout horizontal
+  containerRow: {
+    flexDirection: "row",
     flex: 1,
+  },
+  container: {
+    flex: 1,
+    width: "82%",
+    marginLeft: "18%",
   },
   slider: {
     width: "18%", // Set the width of the sliding bar
@@ -160,16 +227,20 @@ const styles = StyleSheet.create({
   open: {
     marginLeft: 200, // Slide out content when the bar is open
   },
-  scrollView: {
+  scrollViewSide: {
     flexGrow: 1,
     justifyContent: "flex-start", // This makes sure the content is aligned from the top
     backgroundColor: "#6C98C4",
+  },
+  scrollView: {
+    // width: "82%",
+    // borderTopWidth: 10,
   },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
   },
   itemImage: {
     width: 50,
@@ -179,6 +250,75 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 16,
+    fontWeight: "bold",
+  },
+//   messageText: {
+//     backgroundColor: "#e1e1e1",
+//     padding: 10,
+//     borderRadius: 10,
+//     marginVertical: 5,
+//     alignSelf: "flex-start", // Align messages to the left by default
+//   },
+  row: {
+    // paddingTop: 15,
+    flexDirection:"row",
+  },
+  messageContainer: {
+    marginVertical: 8,
+    padding: 10,
+    backgroundColor: "#f4f4f4",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  usernameText: {
+    fontSize: 17,
+    paddingTop: 15,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  rightRow:{
+    flexDirection: "row-reverse",
+  },
+  messageBox: {
+    padding: 10,
+    backgroundColor: "#fff",
+    borderRadius: 5,
+    borderColor: "#ccc",
+    borderWidth: 1,
+  },
+  messageText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderTopWidth: 1,
+    borderColor: "#ccc",
+    backgroundColor: "#f9f9f9",
+  },
+  textInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "#fff",
+  },
+  sendButton: {
+    marginLeft: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#007bff",
+    borderRadius: 8,
+  },
+  sendButtonText: {
+    color: "#fff",
     fontWeight: "bold",
   },
 });

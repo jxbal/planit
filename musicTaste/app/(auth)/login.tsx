@@ -98,23 +98,15 @@ const LoginPage: React.FC = () => {
   };
 
   const handleLogin = () => {
-    // Perform the sign-in with Firebase authentication
     signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
-        // If the login is successful, show an alert with a welcome message
         const user = userCredential.user;
-        const userProfile = user.uid;
-        SecureStore.setItemAsync("userProfile", userProfile).then(() => {
-          Alert.alert("Login Successful", `Welcome, ${user.email || 'user'}!`);
-          router.replace("/(tabs)");
-        });
+        router.replace("/(tabs)");
       })
       .catch((error) => {
-        // Handle errors and display appropriate error messages
         const errorCode = error.code;
         const errorMessage = error.message;
   
-        // Customize alert messages based on Firebase error codes
         if (errorCode === 'auth/invalid-email') {
           Alert.alert("Login Failed", "Invalid email address format.");
         } else if (errorCode === 'auth/user-not-found') {

@@ -30,17 +30,16 @@ export default function MainPage() {
     const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
-    
+    const [sendPostVisible, setSendPostVisible] = useState(false);
+    const [caption, setCap] = useState('')
     const [accessToken, setAccessToken] = useState(null);
+    const [draftModal, setDraftModal] = useState(false);
 
     const handleTokenFetched = (token) => {
         if (!accessToken) {
             setAccessToken(token);
           }
       };
-    const [sendPostVisible, setSendPostVisible] = useState(false);
-    const [caption, setCap] = useState('')
-
 
     const handleContentSizeChange = (width: number) => {
         setButtonVisible(width > windowWidth);
@@ -53,11 +52,27 @@ export default function MainPage() {
     }
 
     const closeModal = () => {
-        setPostModalVisible(false);
-        setPostButtonVisible(true);
+        // if (selectedTrack === null) {
+            setPostModalVisible(false);
+            setPostButtonVisible(true);
+        // }
+        // else {
+        //     setDraftModal(true);
+        // }
     }
 
-    const searchSpotify = async (query: string) => {      
+    // const resetModalState = () => {
+    //     setPostModalVisible(false);
+        // setPostButtonVisible(true);
+        // setSelectedTrack(null);
+        // setCap('');
+        // setSendPostVisible(false);
+        // setTracks([]);
+        // setSearchQuery('');
+        // setDraftModal(false);
+    // };
+
+    const searchSpotify = async (query: string) => {
         if (!query.trim()) {
             setTracks([]);
             return;
@@ -126,6 +141,15 @@ export default function MainPage() {
         setSendPostVisible(false)
         setCap('')
     }
+
+    // const handleDraftModalClose = (saveDraft: boolean) => {
+    //     if (saveDraft) {
+    //         console.log('Draft saved');
+    //     } else {
+    //         resetModalState();
+    //     }
+    //     setDraftModal(false);
+    // };
 
     return (
         <ScrollView style={styles.mainScroll}>
@@ -221,7 +245,7 @@ export default function MainPage() {
                                             style={styles.caption}
                                             placeholder="Add a caption..."
                                             placeholderTextColor="#666"
-                                            value={caption} 
+                                            value={caption}
                                             onChangeText={setCaption}
                                         />
                                     </ThemedView>
@@ -238,6 +262,32 @@ export default function MainPage() {
                         </ThemedView>
                     </ThemedView>
                 </Modal>
+                {/* <Modal
+                    animationType='slide'
+                    transparent={true}
+                    visible={draftModal}
+                    onRequestClose={() => handleDraftModalClose(false)}
+                >
+                    <ThemedView style={[styles.draftView, { zIndex: 999 }]}>
+                        <ThemedView style={styles.draftModalContent}>
+                            <Text>Do you want to save your post as a draft?</Text>
+                            <ThemedView style={{ flexDirection: 'row', marginTop: 20, backgroundColor: 'white' }}>
+                                <TouchableOpacity
+                                    style={[styles.draftButtonNo, { opacity: 1 }]}
+                                    onPress={() => handleDraftModalClose(false)}
+                                >
+                                    <Text style={{ color: 'white' }}>No</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.draftButtonYes, { opacity: 1 }]}
+                                    onPress={() => handleDraftModalClose(true)}
+                                >
+                                    <Text style={{ color: 'white' }}>Yes</Text>
+                                </TouchableOpacity>
+                            </ThemedView>
+                        </ThemedView>
+                    </ThemedView>
+                </Modal> */}
                 <ThemedText style={styles.username}>Hi @username</ThemedText>
                 <ThemedView style={styles.friendsView}>
                     <ThemedText style={styles.friendsText}>Feed</ThemedText>
@@ -439,6 +489,53 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1,
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+    },
+    draftView: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 999, // Ensure highest z-index
+    },
+    draftModalContent: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        width: '90%',
+        maxWidth: 500,
+        padding: 30,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    draftButtonNo: {
+        padding: 10,
+        marginRight: 5,
+        backgroundColor: '#6082B6',
+        borderRadius: 5,
+        minWidth: 80,
+        alignItems: 'center'
+    },
+    draftButtonYes: {
+        padding: 10,
+        marginLeft: 5,
+        backgroundColor: '#6082B6',
+        borderRadius: 5,
+        minWidth: 80,
+        alignItems: 'center'
     },
     postView: {
         backgroundColor: 'white',

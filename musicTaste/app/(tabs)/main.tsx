@@ -31,13 +31,17 @@ export default function MainPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
     
-    const [accessToken, setAccessToken] = useState(null);
+    const [accessToken, setAccessToken] = useState<string | null>(null);
 
-    const handleTokenFetched = (token) => {
+    interface TokenFetchedHandler {
+        (token: string): void;
+    }
+
+    const handleTokenFetched: TokenFetchedHandler = (token) => {
         if (!accessToken) {
             setAccessToken(token);
-          }
-      };
+        }
+    };
     const [sendPostVisible, setSendPostVisible] = useState(false);
     const [caption, setCap] = useState('')
 

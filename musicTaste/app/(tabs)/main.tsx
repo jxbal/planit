@@ -32,14 +32,18 @@ export default function MainPage() {
     const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
     const [sendPostVisible, setSendPostVisible] = useState(false);
     const [caption, setCap] = useState('')
-    const [accessToken, setAccessToken] = useState(null);
+    const [accessToken, setAccessToken] = useState<string | null>(null);
+
+    interface TokenFetchedHandler {
+        (token: string): void;
+    }
     const [draftModal, setDraftModal] = useState(false);
 
-    const handleTokenFetched = (token) => {
+    const handleTokenFetched: TokenFetchedHandler = (token) => {
         if (!accessToken) {
             setAccessToken(token);
-          }
-      };
+        }
+    };
 
     const handleContentSizeChange = (width: number) => {
         setButtonVisible(width > windowWidth);

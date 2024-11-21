@@ -84,11 +84,14 @@ const LoginPage: React.FC = () => {
 
   const fetchSpotifyUserID = async (accessToken: string) => {
     try {
-      const userInfoResponse = await axios.get('https://api.spotify.com/v1/me', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const userInfoResponse = await axios.get(
+        "https://api.spotify.com/v1/me",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
       const spotifyUserID = userInfoResponse.data.id;
       await SecureStore.setItemAsync("userProfile", spotifyUserID);
       console.log("Spotify user ID stored as userProfile:", spotifyUserID);
@@ -106,12 +109,12 @@ const LoginPage: React.FC = () => {
       .catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
-  
-        if (errorCode === 'auth/invalid-email') {
+
+        if (errorCode === "auth/invalid-email") {
           Alert.alert("Login Failed", "Invalid email address format.");
-        } else if (errorCode === 'auth/user-not-found') {
+        } else if (errorCode === "auth/user-not-found") {
           Alert.alert("Login Failed", "No user found with this email.");
-        } else if (errorCode === 'auth/wrong-password') {
+        } else if (errorCode === "auth/wrong-password") {
           Alert.alert("Login Failed", "Incorrect password.");
         } else {
           Alert.alert("Login Failed", errorMessage);
@@ -120,7 +123,7 @@ const LoginPage: React.FC = () => {
   };
 
   const handleSignUp = () => {
-    router.push('/signup');
+    router.push("/signup");
   };
 
   const handleSpotifyLogin = async () => {
@@ -137,7 +140,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Nonstop</Text>
 
       <TextInput
         style={styles.input}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Image, Modal, TextInput, Button } from "react-native";
-import { getFirestore, setDoc, doc } from "firebase/firestore";
+import { getFirestore, setDoc, doc, collection, getDocs } from "firebase/firestore";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
@@ -105,24 +105,39 @@ const ProfilePage = () => {
   const [albumSearchResults, setAlbumSearchResults] = useState<Album[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const fetchFavoriteSongs = async (userId: string) => {
+    try {
+      const songsCollection = collection(db, "users", userId, "songs");
+      const querySnapshot = await getDocs(songsCollection);
+      const songs = querySnapshot.docs.map((doc) => doc.data() as Track);
+      setFavoriteSongs(songs);
+    } catch (error) {
+      console.error("Error fetching favorite songs:", error);
+    }
+  };
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      const profileData = await fetchSpotifyProfile();
-      if (profileData) setProfile(profileData);
+    const initializeProfile = async () => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) return;
+
+      try {
+        const response = await axios.get("https://api.spotify.com/v1/me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        setProfile(response.data);
+
+        // Fetch favorite songs
+        const userId = response.data.id;
+        fetchFavoriteSongs(userId);
+      } catch (error) {
+        console.error("Error fetching Spotify profile:", error);
+      }
     };
 
-    const fetchNowPlaying = async () => {
-      const currentTrack = await getCurrentlyPlaying();
-      setNowPlaying(currentTrack);
-    };
-
-    fetchProfile();
-    fetchNowPlaying();
-
-    const intervalId = setInterval(fetchNowPlaying, 5000);
-    return () => clearInterval(intervalId);
+    initializeProfile();
   }, []);
-
+  
   const handleAddFavorite = async (type: string, item: Track | Album) => {
     const userId = await SecureStore.getItemAsync("userProfile");
     if (!userId) {
@@ -140,13 +155,15 @@ const ProfilePage = () => {
   };
 
   const handleSearchSongs = async () => {
+    if (!searchQuery.trim()) return; // Avoid showing "No results" if nothing was typed.
+
     const accessToken = await getValidAccessToken();
     if (!accessToken) return;
 
     setIsLoading(true);
     try {
       const response = await axios.get(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=10`,
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery.trim())}&type=track&limit=10`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       setSongSearchResults(response.data.tracks.items || []);
@@ -200,16 +217,38 @@ const ProfilePage = () => {
         </View>
       )}
 
-      {/* Favorite Songs */}
+      {/* Favorite Songs Section */}
       <Text style={styles.sectionTitle}>Favorite Songs</Text>
       <View style={styles.grid}>
         {favoriteSongs.map((song, index) => (
           <View key={index} style={styles.gridItem}>
-            <Image source={{ uri: song.album.images[0]?.url }} style={styles.gridImage} />
+            {song.album?.images?.[0]?.url ? (
+              <Image source={{ uri: song.album.images[0].url }} style={styles.gridImage} />
+            ) : (
+              <View style={[styles.gridImage, { backgroundColor: "#555" }]} />
+            )}
             <Text style={styles.gridText}>{song.name}</Text>
           </View>
         ))}
         <TouchableOpacity style={styles.gridItem} onPress={() => setSearchModalVisible(true)}>
+          <Text style={styles.addText}>+</Text>
+        </TouchableOpacity>
+      </View>
+  
+      {/* Favorite Albums */}
+      <Text style={styles.sectionTitle}>Favorite Albums</Text>
+      <View style={styles.grid}>
+        {favoriteAlbums.map((album, index) => (
+          <View key={index} style={styles.gridItem}>
+            {album.images?.[0]?.url ? (
+              <Image source={{ uri: album.images[0].url }} style={styles.gridImage} />
+            ) : (
+              <View style={[styles.gridImage, { backgroundColor: "#555" }]} /> //placeholder
+            )}
+            <Text style={styles.gridText}>{album.name || "Unknown Album"}</Text>
+          </View>
+        ))}
+        <TouchableOpacity style={styles.gridItem} onPress={() => setAlbumSearchModalVisible(true)}>
           <Text style={styles.addText}>+</Text>
         </TouchableOpacity>
       </View>
@@ -221,35 +260,39 @@ const ProfilePage = () => {
             style={styles.searchInput}
             placeholder="Search for a song..."
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(text) => setSearchQuery(text)}
           />
           <Button title="Search" onPress={handleSearchSongs} />
           {isLoading ? (
-            <Text>Loading...</Text>
-          ) : (
+            <Text style={{ color: "#fff", textAlign: "center" }}>Loading...</Text>
+          ) : songSearchResults.length > 0 ? (
             <FlatList
               data={songSearchResults}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.trackItem}
                   onPress={() => {
-                    handleAddFavorite("songs", item);
+                    setFavoriteSongs((prev) => [...prev, item]);
                     setSearchModalVisible(false);
                   }}
                 >
                   <Image source={{ uri: item.album.images[0]?.url }} style={styles.albumCover} />
-                  <View>
-                    <Text style={styles.trackName}>{item.name}</Text>
-                    <Text style={styles.artistName}>
-                      {item.artists.map((artist) => artist.name).join(", ")}
-                    </Text>
-                  </View>
+                  <Text style={styles.trackName}>{item.name}</Text>
                 </TouchableOpacity>
               )}
               keyExtractor={(item) => item.id}
             />
-          )}
-          <TouchableOpacity onPress={() => setSearchModalVisible(false)}>
+          ) : searchQuery.trim() ? (
+            <Text style={{ color: "#fff", textAlign: "center", marginTop: 20 }}>No results found.</Text>
+          ) : null}
+
+          <TouchableOpacity
+            onPress={() => {
+              setSearchModalVisible(false);
+              setSearchQuery("");
+              setSongSearchResults([]);
+            }}
+          >
             <Text style={styles.closeButton}>Close</Text>
           </TouchableOpacity>
         </View>
@@ -290,7 +333,10 @@ const ProfilePage = () => {
               keyExtractor={(item) => item.id}
             />
           )}
-          <TouchableOpacity onPress={() => setAlbumSearchModalVisible(false)}>
+          <TouchableOpacity onPress={() => {
+            console.log("closing album modal");
+            setAlbumSearchModalVisible(false);
+          }}>
             <Text style={styles.closeButton}>Close</Text>
           </TouchableOpacity>
         </View>
@@ -300,27 +346,27 @@ const ProfilePage = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000", padding: 20 },
+  container: { flex: 1, backgroundColor: "#700505", padding: 20 },
   header: { alignItems: "center", marginBottom: 20 },
   profilePic: { width: 100, height: 100, borderRadius: 50, marginBottom: 10 },
   name: { fontSize: 24, fontWeight: "bold", color: "#fff" },
   username: { fontSize: 16, color: "#aaa" },
-  description: { fontSize: 14, color: "#bbb", textAlign: "center" },
   sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#fff", marginVertical: 10 },
-  nowPlaying: { padding: 10, backgroundColor: "#333", borderRadius: 10, marginBottom: 20 },
-  grid: { flexDirection: "row", flexWrap: "wrap" },
-  gridItem: { width: "30%", margin: "1.5%", backgroundColor: "#333", borderRadius: 10, alignItems: "center", padding: 10 },
-  gridImage: { width: 50, height: 50, marginBottom: 5 },
+  description: { fontSize: 14, color: "#aaa", textAlign: "center", marginVertical: 5 },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  gridItem: { width: "30%", margin: 5, alignItems: "center", padding: 10 },
+  gridImage: { width: "100%", aspectRatio: 1, borderRadius: 10, marginBottom: 5 },
   gridText: { color: "#fff", fontSize: 12, textAlign: "center" },
-  addText: { fontSize: 24, color: "#1DB954", textAlign: "center" },
-  modal: { flex: 1, backgroundColor: "#000", padding: 20 },
-  searchInput: { backgroundColor: "#fff", padding: 10, marginBottom: 20 },
-  trackItem: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  modal: { flex: 1, backgroundColor: "#700505", padding: 10, justifyContent: "center" },
+  searchInput: { backgroundColor: "#fff", padding: 10, marginVertical: 10 },
+  trackItem: { flexDirection: "row", alignItems: "center", marginVertical: 5 },
   albumCover: { width: 50, height: 50, marginRight: 10 },
-  trackName: { color: "#fff", fontSize: 16 },
-  albumName: { color: "#fff", fontSize: 16 },
-  artistName: { color: "#aaa", fontSize: 14 },
-  closeButton: { color: "#1DB954", textAlign: "center", marginTop: 20 },
+  trackName: { color: "#fff", fontSize: 14 },
+  closeButton: { color: "#1DB954", textAlign: "center", marginVertical: 20 },
+  albumName: { color: "#fff", fontSize: 14, fontWeight: "bold" },
+  artistName: { color: "#aaa", fontSize: 12 },
+  nowPlaying: { marginVertical: 20, padding: 10, backgroundColor: "#333", borderRadius: 10 },
+  addText: { fontSize: 24, color: "#fff", textAlign: "center" },  
 });
 
 export default ProfilePage;

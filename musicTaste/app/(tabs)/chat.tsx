@@ -9,6 +9,7 @@ import {
   Image,
   Dimensions,
   TextInput,
+  SafeAreaView,
 } from "react-native";
 import { db, auth } from "../../firebaseConfig";
 import { getDoc, doc } from "firebase/firestore";
@@ -111,84 +112,93 @@ const Chat = () => {
   const firstItemHeight = 80; // Adjust this value based on your item's height
 
   return (
-    <View style={[styles.containerRow, isOpen ? styles.open : null]}>
-      <View style={styles.slider}>
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollViewSide,
-            {
-              paddingTop: (screenHeight - firstItemHeight) / 2 - 80, // This centers the first item
-            },
-          ]}
-        >
-          {friendList.map((friend, index) => (
-            <View key={index} style={styles.itemContainer}>
-              <TouchableOpacity onPress={() => handleFriendSelect(friend)}>
-                <Image source={friend.imgPath} style={styles.itemImage} />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-        <TouchableOpacity style={styles.toggleButton} onPress={toggleSlider}>
-          <Text style={styles.buttonText}>☰</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.container}>
-        <Text style={styles.header}>{currentChatName}</Text>
-        {/* Chat Messages */}
-        <ScrollView
-          contentContainerStyle={styles.scrollView}
-          ref={scrollViewRef}
-          onContentSizeChange={() =>
-            scrollViewRef.current?.scrollToEnd({ animated: true })
-          }
-        >
-          {currentChatContent &&
-            currentChatContent
-              .slice()
-            //   .reverse()
-              .map((dialogInfo, index) => {
-                const isUserMessage = dialogInfo.user === userID;
-                return(
-                <View key={index} style={styles.messageContainer}>
-                  <View style={[styles.row, isUserMessage && styles.rightRow]}>
-                    <Image
-                      source={require("../../assets/images/1.png")}
-                      style={styles.itemImage}
-                    />
-                    <Text style={styles.usernameText}>
-                        {currentChatNickName[dialogInfo.user]}
-                    </Text>
-                  </View>
-                  <View style={styles.messageBox}>
-                    <Text style={styles.messageText}>{dialogInfo.dialog}</Text>
-                  </View>
-                </View>
-                );
-              })}
-        </ScrollView>
-
-        {/* Input Box */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type your message..."
-            value={inputMessage}
-            onChangeText={setInputMessage}
-          />
-          <TouchableOpacity
-            style={styles.sendButton}
-            onPress={handleSendMessage}
+    <SafeAreaView style={styles.safeContainer}>
+      <View style={[styles.containerRow, isOpen ? styles.open : null]}>
+        <View style={styles.slider}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollViewSide,
+              {
+                paddingTop: (screenHeight - firstItemHeight) / 2 - 80, // This centers the first item
+              },
+            ]}
           >
-            <Text style={styles.sendButtonText}>Send</Text>
+            {friendList.map((friend, index) => (
+              <View key={index} style={styles.itemContainer}>
+                <TouchableOpacity onPress={() => handleFriendSelect(friend)}>
+                  <Image source={friend.imgPath} style={styles.itemImage} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+          <TouchableOpacity style={styles.toggleButton} onPress={toggleSlider}>
+            <Text style={styles.buttonText}>☰</Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.container}>
+          <Text style={styles.header}>{currentChatName}</Text>
+          {/* Chat Messages */}
+          <ScrollView
+            contentContainerStyle={styles.scrollView}
+            ref={scrollViewRef}
+            onContentSizeChange={() =>
+              scrollViewRef.current?.scrollToEnd({ animated: true })
+            }
+          >
+            {currentChatContent &&
+              currentChatContent
+                .slice()
+                //   .reverse()
+                .map((dialogInfo, index) => {
+                  const isUserMessage = dialogInfo.user === userID;
+                  return (
+                    <View key={index} style={styles.messageContainer}>
+                      <View
+                        style={[styles.row, isUserMessage && styles.rightRow]}
+                      >
+                        <Image
+                          source={require("../../assets/images/1.png")}
+                          style={styles.itemImage}
+                        />
+                        <Text style={styles.usernameText}>
+                          {currentChatNickName[dialogInfo.user]}
+                        </Text>
+                      </View>
+                      <View style={styles.messageBox}>
+                        <Text style={styles.messageText}>
+                          {dialogInfo.dialog}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+          </ScrollView>
+
+          {/* Input Box */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Type your message..."
+              value={inputMessage}
+              onChangeText={setInputMessage}
+            />
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleSendMessage}
+            >
+              <Text style={styles.sendButtonText}>Send</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+  },
   containerRow: {
     flexDirection: "row",
     flex: 1,
@@ -230,7 +240,7 @@ const styles = StyleSheet.create({
   scrollViewSide: {
     flexGrow: 1,
     justifyContent: "flex-start", // This makes sure the content is aligned from the top
-    backgroundColor: "#6C98C4",
+    backgroundColor: "#2d5016ff",
   },
   scrollView: {
     // width: "82%",
@@ -252,16 +262,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-//   messageText: {
-//     backgroundColor: "#e1e1e1",
-//     padding: 10,
-//     borderRadius: 10,
-//     marginVertical: 5,
-//     alignSelf: "flex-start", // Align messages to the left by default
-//   },
+  //   messageText: {
+  //     backgroundColor: "#e1e1e1",
+  //     padding: 10,
+  //     borderRadius: 10,
+  //     marginVertical: 5,
+  //     alignSelf: "flex-start", // Align messages to the left by default
+  //   },
   row: {
     // paddingTop: 15,
-    flexDirection:"row",
+    flexDirection: "row",
   },
   messageContainer: {
     marginVertical: 8,
@@ -279,7 +289,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
-  rightRow:{
+  rightRow: {
     flexDirection: "row-reverse",
   },
   messageBox: {

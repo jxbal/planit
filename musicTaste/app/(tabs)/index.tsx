@@ -28,6 +28,7 @@ import {
 import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
+import { launchCamera } from "react-native-image-picker";
 import { CameraRoll } from "@react-native-camera-roll/camera-roll";
 import * as Localization from "expo-localization";
 
@@ -72,6 +73,15 @@ export default function MainPage() {
   const [image, setImage] = useState<string | null>(null);
   const [viewIndex, setViewIndex] = useState(0);
   const [feed, setFeed] = useState<any[]>([]);
+  const [photoModal, setPhotoModal] = useState(false);
+
+  const openPhotoModal = () => {
+    setPhotoModal(true);
+  };
+
+  const closePhotoModal = () => {
+    setPhotoModal(false);
+  };
 
   async function movePostsToArchived(userID: string) {
     const userDocRef = doc(db, "profiles", userID);
@@ -371,6 +381,34 @@ export default function MainPage() {
     }
   };
 
+  const takeImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission needed",
+          "Camera permission is required to take photos."
+        );
+        return;
+      }
+      let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+      if (!result.canceled) {
+        setImage(result.assets[0].uri);
+        setViewIndex(1);
+        setPhotoModal(false);
+      }
+    } catch (error) {
+      console.error("Error taking image:", error);
+      Alert.alert("Error", "Failed to select image. Please try again.");
+    }
+  };
+
   useEffect(() => {
     const loadPosts = async () => {
       if (profile?.id) {
@@ -490,8 +528,62 @@ export default function MainPage() {
                       <View style={styles.photoContainer}>
                         <TouchableOpacity
                           style={styles.addPhoto}
-                          onPress={selectImage}
+                          // onPress={selectImage}
+                          onPress={openPhotoModal}
                         >
+                          {photoModal && (
+                            <Modal
+                              animationType="slide"
+                              transparent={true}
+                              visible={photoModal}
+                              onRequestClose={closePhotoModal}
+                            >
+                              <View style={styles.photoModalContainer}>
+                                <View style={styles.photoModalContent}>
+                                  <View style={styles.photoModalHeader}>
+                                    <Text style={styles.photoModalTitle}>
+                                      Choose Photo Option
+                                    </Text>
+                                    <TouchableOpacity onPress={closePhotoModal}>
+                                      <Ionicons
+                                        name="close"
+                                        size={24}
+                                        color="#333"
+                                      />
+                                    </TouchableOpacity>
+                                  </View>
+                                  <TouchableOpacity
+                                    style={styles.photoModalButton}
+                                    onPress={takeImage}
+                                  >
+                                    <Ionicons
+                                      name="camera"
+                                      size={24}
+                                      color="#A52A2A"
+                                      style={styles.photoModalIcon}
+                                    />
+                                    <Text style={styles.photoModalButtonText}>
+                                      Take Photo
+                                    </Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={styles.photoModalButton}
+                                    onPress={selectImage}
+                                  >
+                                    <Ionicons
+                                      name="image"
+                                      size={24}
+                                      color="#A52A2A"
+                                      style={styles.photoModalIcon}
+                                    />
+                                    <Text style={styles.photoModalButtonText}>
+                                      Choose from Library
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            </Modal>
+                          )}
                           <Text style={styles.addPhotoText}>Add a Photo</Text>
                           {image && (
                             <Ionicons
@@ -779,49 +871,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  draftView: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 999, // Ensure highest z-index
-  },
-  draftModalContent: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    width: "90%",
-    maxWidth: 500,
-    padding: 30,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  draftButtonNo: {
-    padding: 10,
-    marginRight: 5,
-    backgroundColor: "#6082B6",
-    borderRadius: 5,
-    minWidth: 80,
-    alignItems: "center",
-  },
-  draftButtonYes: {
-    padding: 10,
-    marginLeft: 5,
-    backgroundColor: "#6082B6",
-    borderRadius: 5,
-    minWidth: 80,
-    alignItems: "center",
-  },
   postView: {
     backgroundColor: "white",
     borderRadius: 20,
@@ -941,5 +990,56 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#555",
     marginRight: 30,
+  },
+  photoModalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  photoModalContent: {
+    backgroundColor: "white",
+    borderRadius: 15,
+    padding: 20,
+    width: "80%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  photoModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  photoModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  photoModalButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+    backgroundColor: "#f8f8f8",
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  photoModalButtonText: {
+    fontSize: 16,
+    color: "#333",
+    marginLeft: 10,
+  },
+  photoModalIcon: {
+    marginRight: 5,
   },
 });

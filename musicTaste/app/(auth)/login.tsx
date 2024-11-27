@@ -131,7 +131,7 @@ const LoginPage: React.FC = () => {
         ? userDocSnap.data().posts || []
         : [];
       const archivedPosts = usersDocSnap.exists()
-        ? usersDocSnap.data().archivesPosts || []
+        ? usersDocSnap.data().archivedPosts || []
         : [];
 
       console.log("Attempting to save user:", { userID, username, name });

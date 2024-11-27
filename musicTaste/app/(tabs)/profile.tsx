@@ -11,6 +11,7 @@ import {
   TextInput,
   Button,
   SafeAreaView,
+  ScrollView,
 } from "react-native";
 import {
   getFirestore,
@@ -21,6 +22,7 @@ import {
 } from "firebase/firestore";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
+import CalendarPicker from "@/components/PreviouslyPosted";
 
 const db = getFirestore();
 
@@ -193,6 +195,12 @@ const ProfilePage = () => {
     initializeProfile();
   }, []);
 
+  // useEffect(() => {
+  //   if (profile?.id) {
+  //     fetchPreviouslyPostedDates(profile.id);
+  //   }
+  // }, [profile]);
+
   const handleAddFavorite = async (type: string, item: Track | Album) => {
     const userId = await SecureStore.getItemAsync("userProfile");
     if (!userId) {
@@ -253,193 +261,219 @@ const ProfilePage = () => {
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <View style={styles.container}>
-        {/* Profile Header */}
-        <View style={styles.header}>
-          <Image
-            source={{
-              uri:
-                profile?.images?.[0]?.url || "https://via.placeholder.com/100",
-            }}
-            style={styles.profilePic}
-          />
-          <Text style={styles.name}>{profile?.display_name || "User"}</Text>
-          <Text style={styles.username}>@{profile?.id || "unknown"}</Text>
-          <Text style={styles.description}>Music lover & Spotify fan</Text>
-        </View>
-
-        {/* Now Playing */}
-        {nowPlaying && (
-          <View style={styles.nowPlaying}>
-            <Text style={styles.sectionTitle}>Now Playing</Text>
-            <Text>
-              {nowPlaying.item.name} -{" "}
-              {nowPlaying.item.artists
-                .map((artist: any) => artist.name)
-                .join(", ")}
-            </Text>
-          </View>
-        )}
-
-        {/* Favorite Songs Section */}
-        <Text style={styles.sectionTitle}>Favorite Songs</Text>
-        <View style={styles.grid}>
-          {favoriteSongs.map((song, index) => (
-            <View key={index} style={styles.gridItem}>
-              {song.album?.images?.[0]?.url ? (
-                <Image
-                  source={{ uri: song.album.images[0].url }}
-                  style={styles.gridImage}
-                />
-              ) : (
-                <View style={[styles.gridImage, { backgroundColor: "#555" }]} />
-              )}
-              <Text style={styles.gridText}>{song.name}</Text>
-            </View>
-          ))}
-          <TouchableOpacity
-            style={styles.gridItem}
-            onPress={() => setSearchModalVisible(true)}
-          >
-            <Text style={styles.addText}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Favorite Albums */}
-        <Text style={styles.sectionTitle}>Favorite Albums</Text>
-        <View style={styles.grid}>
-          {favoriteAlbums.map((album, index) => (
-            <View key={index} style={styles.gridItem}>
-              {album.images?.[0]?.url ? (
-                <Image
-                  source={{ uri: album.images[0].url }}
-                  style={styles.gridImage}
-                />
-              ) : (
-                <View style={[styles.gridImage, { backgroundColor: "#555" }]} /> //placeholder
-              )}
-              <Text style={styles.gridText}>
-                {album.name || "Unknown Album"}
-              </Text>
-            </View>
-          ))}
-          <TouchableOpacity
-            style={styles.gridItem}
-            onPress={() => setAlbumSearchModalVisible(true)}
-          >
-            <Text style={styles.addText}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Modal for Songs */}
-        <Modal visible={searchModalVisible} transparent animationType="slide">
-          <View style={styles.modal}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search for a song..."
-              value={searchQuery}
-              onChangeText={(text) => setSearchQuery(text)}
+      <ScrollView>
+        <View style={styles.container}>
+          {/* Profile Header */}
+          <View style={styles.header}>
+            <Image
+              source={{
+                uri:
+                  profile?.images?.[0]?.url ||
+                  "https://via.placeholder.com/100",
+              }}
+              style={styles.profilePic}
             />
-            <Button title="Search" onPress={handleSearchSongs} />
-            {isLoading ? (
-              <Text style={{ color: "#fff", textAlign: "center" }}>
-                Loading...
+            <Text style={styles.name}>{profile?.display_name || "User"}</Text>
+            <Text style={styles.username}>@{profile?.id || "unknown"}</Text>
+            <Text style={styles.description}>Music lover & Spotify fan</Text>
+          </View>
+
+          {/* Now Playing */}
+          {nowPlaying && (
+            <View style={styles.nowPlaying}>
+              <Text style={styles.sectionTitle}>Now Playing</Text>
+              <Text>
+                {nowPlaying.item.name} -{" "}
+                {nowPlaying.item.artists
+                  .map((artist: any) => artist.name)
+                  .join(", ")}
               </Text>
-            ) : songSearchResults.length > 0 ? (
-              <FlatList
-                data={songSearchResults}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.trackItem}
-                    onPress={async () => {
-                      await handleAddFavorite("songs", item);
-                      setSearchModalVisible(false);
+            </View>
+          )}
+
+          {/* Favorite Songs Section */}
+          <Text style={styles.sectionTitle}>Favorite Songs</Text>
+          <View style={styles.grid}>
+            {favoriteSongs.map((song, index) => (
+              <View key={index} style={styles.gridItem}>
+                {song.album?.images?.[0]?.url ? (
+                  <Image
+                    source={{ uri: song.album.images[0].url }}
+                    style={styles.gridImage}
+                  />
+                ) : (
+                  <View
+                    style={[styles.gridImage, { backgroundColor: "#555" }]}
+                  />
+                )}
+                <Text style={styles.gridText}>{song.name}</Text>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.gridItem}
+              onPress={() => setSearchModalVisible(true)}
+            >
+              <Text style={styles.addText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Favorite Albums */}
+          <Text style={styles.sectionTitle}>Favorite Albums</Text>
+          <View style={styles.grid}>
+            {favoriteAlbums.map((album, index) => (
+              <View key={index} style={styles.gridItem}>
+                {album.images?.[0]?.url ? (
+                  <Image
+                    source={{ uri: album.images[0].url }}
+                    style={styles.gridImage}
+                  />
+                ) : (
+                  <View
+                    style={[styles.gridImage, { backgroundColor: "#555" }]}
+                  /> //placeholder
+                )}
+                <Text style={styles.gridText}>
+                  {album.name || "Unknown Album"}
+                </Text>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.gridItem}
+              onPress={() => setAlbumSearchModalVisible(true)}
+            >
+              <Text style={styles.addText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Search Modal for Songs */}
+          <SafeAreaView>
+            <Modal
+              visible={searchModalVisible}
+              transparent
+              animationType="slide"
+            >
+              <View style={styles.modal}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search for a song..."
+                  value={searchQuery}
+                  onChangeText={(text) => setSearchQuery(text)}
+                />
+                <Button title="Search" onPress={handleSearchSongs} />
+                {isLoading ? (
+                  <Text style={{ color: "#fff", textAlign: "center" }}>
+                    Loading...
+                  </Text>
+                ) : songSearchResults.length > 0 ? (
+                  <FlatList
+                    data={songSearchResults}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.trackItem}
+                        onPress={async () => {
+                          await handleAddFavorite("songs", item);
+                          setSearchModalVisible(false);
+                        }}
+                      >
+                        <Image
+                          source={{ uri: item.album.images[0]?.url }}
+                          style={styles.albumCover}
+                        />
+                        <Text style={styles.trackName}>{item.name}</Text>
+                      </TouchableOpacity>
+                    )}
+                    keyExtractor={(item) => item.id}
+                  />
+                ) : searchQuery.trim() ? (
+                  <Text
+                    style={{
+                      color: "#fff",
+                      textAlign: "center",
+                      marginTop: 20,
                     }}
                   >
-                    <Image
-                      source={{ uri: item.album.images[0]?.url }}
-                      style={styles.albumCover}
-                    />
-                    <Text style={styles.trackName}>{item.name}</Text>
-                  </TouchableOpacity>
+                    No results found.
+                  </Text>
+                ) : null}
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearchModalVisible(false);
+                    setSearchQuery("");
+                    setSongSearchResults([]);
+                  }}
+                >
+                  <Text style={styles.closeButton}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </Modal>
+          </SafeAreaView>
+
+          {/* Search Modal for Albums */}
+          <SafeAreaView>
+            <Modal
+              visible={albumSearchModalVisible}
+              transparent
+              animationType="slide"
+            >
+              <View style={styles.modal}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search for an album..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                <Button title="Search" onPress={handleSearchAlbums} />
+                {isLoading ? (
+                  <Text>Loading...</Text>
+                ) : (
+                  <FlatList
+                    data={albumSearchResults}
+                    renderItem={({ item }) =>
+                      item && item.id && item.images?.[0]?.url ? (
+                        <TouchableOpacity
+                          style={styles.trackItem}
+                          onPress={() => {
+                            handleAddFavorite("albums", item);
+                            setAlbumSearchModalVisible(false);
+                          }}
+                        >
+                          <Image
+                            source={{ uri: item.images[0].url }}
+                            style={styles.albumCover}
+                          />
+                          <View>
+                            <Text style={styles.albumName}>{item.name}</Text>
+                            <Text style={styles.artistName}>
+                              {item.artists
+                                .map((artist) => artist.name)
+                                .join(", ")}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ) : null
+                    }
+                    keyExtractor={(item) => item?.id || "unknown"}
+                  />
                 )}
-                keyExtractor={(item) => item.id}
-              />
-            ) : searchQuery.trim() ? (
-              <Text
-                style={{ color: "#fff", textAlign: "center", marginTop: 20 }}
-              >
-                No results found.
-              </Text>
-            ) : null}
-
-            <TouchableOpacity
-              onPress={() => {
-                setSearchModalVisible(false);
-                setSearchQuery("");
-                setSongSearchResults([]);
-              }}
-            >
-              <Text style={styles.closeButton}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </Modal>
-
-        {/* Search Modal for Albums */}
-        <Modal
-          visible={albumSearchModalVisible}
-          transparent
-          animationType="slide"
-        >
-          <View style={styles.modal}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search for an album..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            <Button title="Search" onPress={handleSearchAlbums} />
-            {isLoading ? (
-              <Text>Loading...</Text>
-            ) : (
-              <FlatList
-                data={albumSearchResults}
-                renderItem={({ item }) =>
-                  item && item.id && item.images?.[0]?.url ? (
-                    <TouchableOpacity
-                      style={styles.trackItem}
-                      onPress={() => {
-                        handleAddFavorite("albums", item);
-                        setAlbumSearchModalVisible(false);
-                      }}
-                    >
-                      <Image
-                        source={{ uri: item.images[0].url }}
-                        style={styles.albumCover}
-                      />
-                      <View>
-                        <Text style={styles.albumName}>{item.name}</Text>
-                        <Text style={styles.artistName}>
-                          {item.artists.map((artist) => artist.name).join(", ")}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ) : null
-                }
-                keyExtractor={(item) => item?.id || "unknown"}
-              />
-            )}
-            <TouchableOpacity
-              onPress={() => {
-                console.log("closing album modal");
-                setAlbumSearchModalVisible(false);
-              }}
-            >
-              <Text style={styles.closeButton}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </Modal>
-      </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    console.log("closing album modal");
+                    setAlbumSearchModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.closeButton}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </Modal>
+          </SafeAreaView>
+        </View>
+        {/* previously posted calendar */}
+        <View style={styles.calendarViewContainer}>
+          <Text style={styles.previouslyPostedText}> Previosuly Posted: </Text>
+          <CalendarPicker userId={profile?.id}></CalendarPicker>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -499,6 +533,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   addText: { fontSize: 24, color: "#fff", textAlign: "center" },
+  calendarViewContainer: {
+    flex: 1,
+    // backgroundColor: "#fff",
+  },
+  previouslyPostedText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    marginVertical: 10,
+    marginLeft: 20,
+  },
 });
 
 export default ProfilePage;

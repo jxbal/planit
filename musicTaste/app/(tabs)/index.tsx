@@ -6,10 +6,11 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
+  RefreshControl,
+  SafeAreaView,
 } from "react-native";
 import { Text, Modal, Alert, Pressable, View } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import { useState, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as SecureStore from "expo-secure-store";
@@ -20,16 +21,11 @@ import {
   doc,
   arrayUnion,
   updateDoc,
-  query,
-  where,
-  collection,
   getDoc,
 } from "firebase/firestore";
 import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
-import { launchCamera } from "react-native-image-picker";
-import { CameraRoll } from "@react-native-camera-roll/camera-roll";
 import * as Localization from "expo-localization";
 
 const friendsList = [
@@ -74,6 +70,7 @@ export default function MainPage() {
   const [viewIndex, setViewIndex] = useState(0);
   const [feed, setFeed] = useState<any[]>([]);
   const [photoModal, setPhotoModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const openPhotoModal = () => {
     setPhotoModal(true);
@@ -81,6 +78,12 @@ export default function MainPage() {
 
   const closePhotoModal = () => {
     setPhotoModal(false);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    fetchPosts(profile.id);
+    setRefreshing(false);
   };
 
   async function movePostsToArchived(userID: string) {
@@ -425,261 +428,277 @@ export default function MainPage() {
   }, [profile]);
 
   return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient
-        colors={["#ffffff", "#d9b3b3"]} // White to Maroon
-        style={{ flex: 1 }}
-      >
-        <ScrollView>
-          <View style={styles.mainPage}>
-            <SpotifyAuth onTokenFetched={handleTokenFetched} />
-            {postButtonVisible && (
-              <TouchableOpacity style={styles.postButton} onPress={openModal}>
-                <Ionicons name="add-circle" size={32} color="#A52A2A" />
-              </TouchableOpacity>
-            )}
-            <Modal
-              animationType="slide"
-              transparent={true}
-              visible={postModalVisible}
-              onRequestClose={closeModal}
-            >
-              <View style={styles.modalContainer}>
-                <View style={styles.postView}>
-                  <ThemedText style={styles.postText}>New Post</ThemedText>
-                  <Pressable
-                    style={[styles.postButton, styles.leavePostButton]}
-                    onPress={closeModal}
-                  >
-                    <Ionicons name="close-circle" size={32} color="#A52A2A" />
-                  </Pressable>
+    <LinearGradient
+      colors={["#ffffff", "#d9b3b3"]} // White to Maroon
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={styles.safeAreaViewHome}>
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+              ></RefreshControl>
+            }
+          >
+            <View style={styles.mainPage}>
+              <SpotifyAuth onTokenFetched={handleTokenFetched} />
+              {postButtonVisible && (
+                <TouchableOpacity style={styles.postButton} onPress={openModal}>
+                  <Ionicons name="add-circle" size={32} color="#A52A2A" />
+                </TouchableOpacity>
+              )}
+              <Modal
+                animationType="slide"
+                transparent={true}
+                visible={postModalVisible}
+                onRequestClose={closeModal}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.postView}>
+                    <ThemedText style={styles.postText}>New Post</ThemedText>
+                    <Pressable
+                      style={[styles.postButton, styles.leavePostButton]}
+                      onPress={closeModal}
+                    >
+                      <Ionicons name="close-circle" size={32} color="#A52A2A" />
+                    </Pressable>
 
-                  <View style={styles.searchContainer}>
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search for a song..."
-                      value={searchQuery}
-                      onChangeText={handleSearch}
-                      placeholderTextColor="#666"
-                    />
-                    {isLoading && <ActivityIndicator style={styles.loader} />}
-                  </View>
-
-                  <ScrollView style={styles.searchResults}>
-                    {tracks.map((track) => (
-                      <TouchableOpacity
-                        key={track.id}
-                        style={styles.trackItem}
-                        onPress={() => handleTrackSelect(track)}
-                      >
-                        {track.album.images.length > 0 && (
-                          <Image
-                            style={styles.trackAlbumCover}
-                            source={{ uri: track.album.images[0].url }}
-                          />
-                        )}
-                        <View style={styles.trackDetails}>
-                          <Text style={styles.trackName}>{track.name}</Text>
-                          <Text style={styles.artistName}>
-                            {track.artists
-                              .map((artist) => artist.name)
-                              .join(", ")}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-
-                  {selectedTrack && (
-                    <View style={styles.selectedTrackContainer}>
-                      <TouchableOpacity
-                        style={styles.closeSong}
-                        onPress={closeSelectedSong}
-                      >
-                        <Ionicons
-                          name="close-circle"
-                          size={32}
-                          color="#A52A2A"
-                        />
-                      </TouchableOpacity>
-                      <Text style={styles.selectedTrackTitle}>
-                        Selected Song:
-                      </Text>
-                      <Text style={styles.selectedTrackName}>
-                        {selectedTrack.name}
-                      </Text>
-                      <Text style={styles.selectedTrackArtist}>
-                        {selectedTrack.artists
-                          .map((artist) => artist.name)
-                          .join(", ")}
-                      </Text>
-                      {selectedTrack.album.images.length > 0 && (
-                        <Image
-                          style={styles.albumCover}
-                          source={{ uri: selectedTrack.album.images[0].url }}
-                        />
-                      )}
+                    <View style={styles.searchContainer}>
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search for a song..."
+                        value={searchQuery}
+                        onChangeText={handleSearch}
+                        placeholderTextColor="#666"
+                      />
+                      {isLoading && <ActivityIndicator style={styles.loader} />}
                     </View>
-                  )}
 
-                  {sendPostVisible && (
-                    <>
-                      {/* <ThemedText style={styles.postText}>Add a Caption</ThemedText> */}
-                      <View style={styles.photoContainer}>
+                    <ScrollView style={styles.searchResults}>
+                      {tracks.map((track) => (
                         <TouchableOpacity
-                          style={styles.addPhoto}
-                          // onPress={selectImage}
-                          onPress={openPhotoModal}
+                          key={track.id}
+                          style={styles.trackItem}
+                          onPress={() => handleTrackSelect(track)}
                         >
-                          {photoModal && (
-                            <Modal
-                              animationType="slide"
-                              transparent={true}
-                              visible={photoModal}
-                              onRequestClose={closePhotoModal}
-                            >
-                              <View style={styles.photoModalContainer}>
-                                <View style={styles.photoModalContent}>
-                                  <View style={styles.photoModalHeader}>
-                                    <Text style={styles.photoModalTitle}>
-                                      Choose Photo Option
-                                    </Text>
-                                    <TouchableOpacity onPress={closePhotoModal}>
-                                      <Ionicons
-                                        name="close"
-                                        size={24}
-                                        color="#333"
-                                      />
-                                    </TouchableOpacity>
-                                  </View>
-                                  <TouchableOpacity
-                                    style={styles.photoModalButton}
-                                    onPress={takeImage}
-                                  >
-                                    <Ionicons
-                                      name="camera"
-                                      size={24}
-                                      color="#A52A2A"
-                                      style={styles.photoModalIcon}
-                                    />
-                                    <Text style={styles.photoModalButtonText}>
-                                      Take Photo
-                                    </Text>
-                                  </TouchableOpacity>
-                                  <TouchableOpacity
-                                    style={styles.photoModalButton}
-                                    onPress={selectImage}
-                                  >
-                                    <Ionicons
-                                      name="image"
-                                      size={24}
-                                      color="#A52A2A"
-                                      style={styles.photoModalIcon}
-                                    />
-                                    <Text style={styles.photoModalButtonText}>
-                                      Choose from Library
-                                    </Text>
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-                            </Modal>
-                          )}
-                          <Text style={styles.addPhotoText}>Add a Photo</Text>
-                          {image && (
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={24}
-                              color="white"
-                              style={styles.checkmarkIcon}
+                          {track.album.images.length > 0 && (
+                            <Image
+                              style={styles.trackAlbumCover}
+                              source={{ uri: track.album.images[0].url }}
                             />
                           )}
+                          <View style={styles.trackDetails}>
+                            <Text style={styles.trackName}>{track.name}</Text>
+                            <Text style={styles.artistName}>
+                              {track.artists
+                                .map((artist) => artist.name)
+                                .join(", ")}
+                            </Text>
+                          </View>
                         </TouchableOpacity>
-                      </View>
-                      <View style={styles.captionContainer}>
-                        <TextInput
-                          style={styles.caption}
-                          placeholder="Add a caption..."
-                          placeholderTextColor="#666"
-                          value={caption}
-                          onChangeText={setCaption}
-                        />
-                      </View>
-                      <View style={styles.sendPostButtonContainer}>
+                      ))}
+                    </ScrollView>
+
+                    {selectedTrack && (
+                      <View style={styles.selectedTrackContainer}>
                         <TouchableOpacity
-                          style={styles.sendPostButton}
-                          onPress={handlePostNow}
+                          style={styles.closeSong}
+                          onPress={closeSelectedSong}
                         >
-                          <Text style={styles.sendPostButtonText}>
-                            Post Now
-                          </Text>
+                          <Ionicons
+                            name="close-circle"
+                            size={32}
+                            color="#A52A2A"
+                          />
                         </TouchableOpacity>
+                        <Text style={styles.selectedTrackTitle}>
+                          Selected Song:
+                        </Text>
+                        <Text style={styles.selectedTrackName}>
+                          {selectedTrack.name}
+                        </Text>
+                        <Text style={styles.selectedTrackArtist}>
+                          {selectedTrack.artists
+                            .map((artist) => artist.name)
+                            .join(", ")}
+                        </Text>
+                        {selectedTrack.album.images.length > 0 && (
+                          <Image
+                            style={styles.albumCover}
+                            source={{ uri: selectedTrack.album.images[0].url }}
+                          />
+                        )}
                       </View>
-                    </>
-                  )}
+                    )}
+
+                    {sendPostVisible && (
+                      <>
+                        {/* <ThemedText style={styles.postText}>Add a Caption</ThemedText> */}
+                        <View style={styles.photoContainer}>
+                          <TouchableOpacity
+                            style={styles.addPhoto}
+                            // onPress={selectImage}
+                            onPress={openPhotoModal}
+                          >
+                            {photoModal && (
+                              <Modal
+                                animationType="slide"
+                                transparent={true}
+                                visible={photoModal}
+                                onRequestClose={closePhotoModal}
+                              >
+                                <View style={styles.photoModalContainer}>
+                                  <View style={styles.photoModalContent}>
+                                    <View style={styles.photoModalHeader}>
+                                      <Text style={styles.photoModalTitle}>
+                                        Choose Photo Option
+                                      </Text>
+                                      <TouchableOpacity
+                                        onPress={closePhotoModal}
+                                      >
+                                        <Ionicons
+                                          name="close"
+                                          size={24}
+                                          color="#333"
+                                        />
+                                      </TouchableOpacity>
+                                    </View>
+                                    <TouchableOpacity
+                                      style={styles.photoModalButton}
+                                      onPress={takeImage}
+                                    >
+                                      <Ionicons
+                                        name="camera"
+                                        size={24}
+                                        color="#A52A2A"
+                                        style={styles.photoModalIcon}
+                                      />
+                                      <Text style={styles.photoModalButtonText}>
+                                        Take Photo
+                                      </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={styles.photoModalButton}
+                                      onPress={selectImage}
+                                    >
+                                      <Ionicons
+                                        name="image"
+                                        size={24}
+                                        color="#A52A2A"
+                                        style={styles.photoModalIcon}
+                                      />
+                                      <Text style={styles.photoModalButtonText}>
+                                        Choose from Library
+                                      </Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
+                              </Modal>
+                            )}
+                            <Text style={styles.addPhotoText}>Add a Photo</Text>
+                            {image && (
+                              <Ionicons
+                                name="checkmark-circle"
+                                size={24}
+                                color="white"
+                                style={styles.checkmarkIcon}
+                              />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                        <View style={styles.captionContainer}>
+                          <TextInput
+                            style={styles.caption}
+                            placeholder="Add a caption..."
+                            placeholderTextColor="#666"
+                            value={caption}
+                            onChangeText={setCaption}
+                          />
+                        </View>
+                        <View style={styles.sendPostButtonContainer}>
+                          <TouchableOpacity
+                            style={styles.sendPostButton}
+                            onPress={handlePostNow}
+                          >
+                            <Text style={styles.sendPostButtonText}>
+                              Post Now
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                </View>
+              </Modal>
+              <ThemedText style={styles.username}>
+                Hi @{profile?.display_name || "username"}
+              </ThemedText>
+              <View style={styles.feedContainer}>
+                <ThemedText style={styles.friendsText}>Feed</ThemedText>
+                <View style={styles.feed}>
+                  <ScrollView style={styles.feedScroll}>
+                    {feed.map((post, index) => (
+                      <View key={index} style={styles.post}>
+                        <Text style={styles.usernamePost}>
+                          {profile?.display_name || "username"}
+                        </Text>
+                        <View style={styles.postHeader}>
+                          <Image
+                            source={{ uri: post.albumCover }}
+                            style={styles.albumCoverImage}
+                          />
+                          <View style={styles.postDetails}>
+                            <Text style={styles.postArtistName}>
+                              {post.artistName}
+                            </Text>
+                            <Text style={styles.postedTrackName}>
+                              {post.track.name}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.postCaption}>{post.caption}</Text>
+                        {post.image && (
+                          <Image
+                            source={{ uri: post.image }}
+                            style={styles.postImage}
+                          />
+                        )}
+                        <Text style={styles.postTimestamp}>
+                          {post.timestamp}
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
                 </View>
               </View>
-            </Modal>
-            <ThemedText style={styles.username}>
-              Hi @{profile?.display_name || "username"}
-            </ThemedText>
-            <View style={styles.feedContainer}>
-              <ThemedText style={styles.friendsText}>Feed</ThemedText>
-              <View style={styles.feed}>
-                <ScrollView style={styles.feedScroll}>
-                  {feed.map((post, index) => (
-                    <View key={index} style={styles.post}>
-                      <Text style={styles.usernamePost}>
-                        {profile?.display_name || "username"}
-                      </Text>
-                      <View style={styles.postHeader}>
-                        <Image
-                          source={{ uri: post.albumCover }}
-                          style={styles.albumCoverImage}
-                        />
-                        <View style={styles.postDetails}>
-                          <Text style={styles.postArtistName}>
-                            {post.artistName}
-                          </Text>
-                          <Text style={styles.postedTrackName}>
-                            {post.track.name}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={styles.postCaption}>{post.caption}</Text>
-                      {post.image && (
-                        <Image
-                          source={{ uri: post.image }}
-                          style={styles.postImage}
-                        />
-                      )}
-                      <Text style={styles.postTimestamp}>{post.timestamp}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
+              <View style={styles.trendingView}>
+                {/* <ThemedText style={styles.trendingText}>Trending</ThemedText> */}
+              </View>
+              <View style={styles.recommendationsView}>
+                {/* <ThemedText style={styles.recommendationsText}>Recommendations</ThemedText> */}
               </View>
             </View>
-            <View style={styles.trendingView}>
-              {/* <ThemedText style={styles.trendingText}>Trending</ThemedText> */}
-            </View>
-            <View style={styles.recommendationsView}>
-              {/* <ThemedText style={styles.recommendationsText}>Recommendations</ThemedText> */}
-            </View>
-          </View>
-        </ScrollView>
-      </LinearGradient>
-    </View>
+          </ScrollView>
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   // mainScroll: {backgroundColor: '#ffffff'},
+  safeAreaViewHome: {
+    flex: 1,
+  },
   mainPage: {
     flex: 1,
     paddingHorizontal: 20,
     // backgroundColor: '#ffffff',
   },
   username: {
-    marginTop: 70,
+    marginTop: 40,
     fontSize: 25,
     color: "#800000",
   },

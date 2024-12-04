@@ -19,10 +19,12 @@ import {
   doc,
   collection,
   getDocs,
+  deleteDoc,
 } from "firebase/firestore";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import CalendarPicker from "@/components/PreviouslyPosted";
+import { Ionicons } from "@expo/vector-icons";
 
 const db = getFirestore();
 
@@ -68,6 +70,30 @@ async function fetchSpotifyProfile(): Promise<any> {
   } catch (error) {
     console.error("Error fetching Spotify profile:", error);
     return null;
+  }
+}
+async function removeFavoriteSongFromFirestore(songId: string, userId: string) {
+  try {
+    const songDocRef = doc(db, "users", userId, "songs", songId);
+
+    await deleteDoc(songDocRef);
+    console.log(`Song with ID ${songId} removed from Firestore.`);
+  } catch (error) {
+    console.error("Error removing song from Firestore:", error);
+  }
+}
+
+async function removeFavoriteAlbumFromFirestore(
+  albumId: string,
+  userId: string
+) {
+  try {
+    const albumDocRef = doc(db, "users", userId, "albums", albumId);
+
+    await deleteDoc(albumDocRef);
+    console.log(`Album with ID ${albumId} removed from Firestore.`);
+  } catch (error) {
+    console.error("Error removing song from Firestore:", error);
   }
 }
 
@@ -133,6 +159,21 @@ const ProfilePage = () => {
   const [songSearchResults, setSongSearchResults] = useState<Track[]>([]);
   const [albumSearchResults, setAlbumSearchResults] = useState<Album[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [deleteSong, setDeleteSong] = useState(false);
+  const [deleteAlbum, setDeleteAlbum] = useState(false);
+
+  // const handleThreeSongs = () => {
+  //   if (favoriteSongs.length >= 3) {
+  //     // setSearchModalVisible(false);
+  //     Alert.alert("Limit Reached", "You can only add up to 3 favorite songs.");
+  //     return;
+  //   }
+  //   setSearchModalVisible(true);
+  // };
+
+  // const editFavoriteSongs = () => {
+  //   setDeleteSong(true);
+  // };
 
   const fetchFavoriteSongs = async (userId: string) => {
     try {
@@ -200,6 +241,26 @@ const ProfilePage = () => {
   //     fetchPreviouslyPostedDates(profile.id);
   //   }
   // }, [profile]);
+
+  const handleRemoveFavoriteSong = async (songId: string) => {
+    const userId = await SecureStore.getItemAsync("userProfile");
+    if (!userId) {
+      console.error("User ID not found.");
+      return;
+    }
+    await removeFavoriteSongFromFirestore(songId, userId);
+    setFavoriteSongs((prev) => prev.filter((song) => song.id !== songId));
+  };
+
+  const handleRemoveFavoriteAlbum = async (albumId: string) => {
+    const userId = await SecureStore.getItemAsync("userProfile");
+    if (!userId) {
+      console.error("User ID not found.");
+      return;
+    }
+    await removeFavoriteAlbumFromFirestore(albumId, userId);
+    setFavoriteAlbums((prev) => prev.filter((album) => album.id !== albumId));
+  };
 
   const handleAddFavorite = async (type: string, item: Track | Album) => {
     const userId = await SecureStore.getItemAsync("userProfile");
@@ -292,7 +353,22 @@ const ProfilePage = () => {
           )}
 
           {/* Favorite Songs Section */}
-          <Text style={styles.sectionTitle}>Favorite Songs</Text>
+          <View style={styles.favoriteSongsView}>
+            <Text style={styles.sectionTitle}>Favorite Songs</Text>
+            {favoriteSongs.length > 0 &&
+              (!deleteSong ? (
+                <TouchableOpacity
+                  style={styles.editSongs}
+                  onPress={() => setDeleteSong(true)}
+                >
+                  <Text style={styles.editSongsText}>edit</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={() => setDeleteSong(false)}>
+                  <Ionicons name="checkmark" size={24} color="#fff"></Ionicons>
+                </TouchableOpacity>
+              ))}
+          </View>
           <View style={styles.grid}>
             {favoriteSongs.map((song, index) => (
               <View key={index} style={styles.gridItem}>
@@ -306,19 +382,44 @@ const ProfilePage = () => {
                     style={[styles.gridImage, { backgroundColor: "#555" }]}
                   />
                 )}
+                {deleteSong && (
+                  <TouchableOpacity
+                    style={styles.closeFavorite}
+                    onPress={() => handleRemoveFavoriteSong(song.id)}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#000" />
+                  </TouchableOpacity>
+                )}
                 <Text style={styles.gridText}>{song.name}</Text>
               </View>
             ))}
-            <TouchableOpacity
-              style={styles.gridItem}
-              onPress={() => setSearchModalVisible(true)}
-            >
-              <Text style={styles.addText}>+</Text>
-            </TouchableOpacity>
+            {favoriteSongs.length < 3 && (
+              <TouchableOpacity
+                style={styles.gridItem}
+                onPress={() => setSearchModalVisible(true)}
+              >
+                <Text style={styles.addText}>+</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Favorite Albums */}
-          <Text style={styles.sectionTitle}>Favorite Albums</Text>
+          <View style={styles.favoriteAlbumsView}>
+            <Text style={styles.sectionTitle}>Favorite Albums</Text>
+            {favoriteAlbums.length > 0 &&
+              (!deleteAlbum ? (
+                <TouchableOpacity
+                  style={styles.editAlbums}
+                  onPress={() => setDeleteAlbum(true)}
+                >
+                  <Text style={styles.editSongsText}>edit</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={() => setDeleteAlbum(false)}>
+                  <Ionicons name="checkmark" size={24} color="#fff"></Ionicons>
+                </TouchableOpacity>
+              ))}
+          </View>
           <View style={styles.grid}>
             {favoriteAlbums.map((album, index) => (
               <View key={index} style={styles.gridItem}>
@@ -332,17 +433,27 @@ const ProfilePage = () => {
                     style={[styles.gridImage, { backgroundColor: "#555" }]}
                   /> //placeholder
                 )}
+                {deleteAlbum && (
+                  <TouchableOpacity
+                    style={styles.closeFavorite}
+                    onPress={() => handleRemoveFavoriteAlbum(album.id)}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#000" />
+                  </TouchableOpacity>
+                )}
                 <Text style={styles.gridText}>
                   {album.name || "Unknown Album"}
                 </Text>
               </View>
             ))}
-            <TouchableOpacity
-              style={styles.gridItem}
-              onPress={() => setAlbumSearchModalVisible(true)}
-            >
-              <Text style={styles.addText}>+</Text>
-            </TouchableOpacity>
+            {favoriteAlbums.length < 3 && (
+              <TouchableOpacity
+                style={styles.gridItem}
+                onPress={() => setAlbumSearchModalVisible(true)}
+              >
+                <Text style={styles.addText}>+</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Search Modal for Songs */}
@@ -467,11 +578,12 @@ const ProfilePage = () => {
               </View>
             </Modal>
           </SafeAreaView>
-        </View>
-        {/* previously posted calendar */}
-        <View style={styles.calendarViewContainer}>
-          <Text style={styles.previouslyPostedText}> Previosuly Posted: </Text>
-          <CalendarPicker userId={profile?.id}></CalendarPicker>
+
+          {/* previously posted calendar */}
+          <View style={styles.calendarViewContainer}>
+            <Text style={styles.previouslyPostedText}>Previosuly Posted: </Text>
+            <CalendarPicker userId={profile?.id}></CalendarPicker>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -488,11 +600,30 @@ const styles = StyleSheet.create({
   profilePic: { width: 100, height: 100, borderRadius: 50, marginBottom: 10 },
   name: { fontSize: 24, fontWeight: "bold", color: "#fff" },
   username: { fontSize: 16, color: "#aaa" },
+  favoriteSongsView: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingRight: 10,
+  },
+  editSongs: { marginTop: 12 },
+  editSongsText: { color: "#fff" },
+  favoriteAlbumsView: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingRight: 10,
+  },
+  editAlbums: { marginTop: 10 },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#fff",
     marginVertical: 10,
+  },
+  closeFavorite: {
+    color: "white",
+    marginTop: -153,
+    marginLeft: 60,
+    paddingVertical: 64.6,
   },
   description: {
     fontSize: 14,

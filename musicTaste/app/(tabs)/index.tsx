@@ -28,18 +28,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import * as Localization from "expo-localization";
 
-const friendsList = [
-  "owen",
-  "johnson",
-  "kelly",
-  "juan",
-  "joanna",
-  "friend",
-  "friend",
-  "friend",
-];
-//when we have friends list from database, we can fill this list dynamically
-
 const db = getFirestore();
 
 interface SpotifyTrack {
@@ -52,10 +40,7 @@ interface SpotifyTrack {
   };
 }
 
-const windowWidth = Dimensions.get("window").width;
-
 export default function MainPage() {
-  const [buttonVisible, setButtonVisible] = useState(false);
   const [postButtonVisible, setPostButtonVisible] = useState(true);
   const [postModalVisible, setPostModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

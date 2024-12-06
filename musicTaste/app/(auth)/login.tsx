@@ -121,28 +121,32 @@ const LoginPage: React.FC = () => {
   ) {
     try {
       // First, try to retrieve the existing document to preserve posts
-      const userDocRef = doc(db, "profiles", userID);
-      const userDocSnap = await getDoc(userDocRef);
+      const profileDocRef = doc(db, "profiles", userID);
+      const profileDocSnap = await getDoc(profileDocRef);
       const usersDocRef = doc(db, "users", userID);
       const usersDocSnap = await getDoc(usersDocRef);
 
       // Get existing posts if they exist
-      const existingPosts = userDocSnap.exists()
-        ? userDocSnap.data().posts || []
+      const existingPosts = profileDocSnap.exists()
+        ? profileDocSnap.data().posts || []
         : [];
       const archivedPosts = usersDocSnap.exists()
         ? usersDocSnap.data().archivedPosts || []
         : [];
+      const existingGroup = usersDocSnap.exists()
+        ? profileDocSnap.data().chatGroup || []
+        : [];
 
       console.log("Attempting to save user:", { userID, username, name });
       await setDoc(
-        userDocRef,
+        profileDocRef,
         {
           username: username,
           name: name,
           followers: [],
           following: [],
           posts: existingPosts,
+          chatGroup: existingGroup,
         },
         { merge: true }
       );

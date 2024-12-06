@@ -11,10 +11,44 @@ import {
   TextInput,
   SafeAreaView,
 } from "react-native";
+import axios from "axios";
 import { db, auth } from "../../firebaseConfig";
 import { getDoc, doc, updateDoc } from "firebase/firestore";
 import { FadeInRight } from "react-native-reanimated";
 import AntDesign from '@expo/vector-icons/AntDesign';
+import * as SecureStore from "expo-secure-store";
+
+
+async function getValidAccessToken(): Promise<string | null> {
+    const accessToken = await SecureStore.getItemAsync("spotify_token");
+    if (!accessToken) {
+      Alert.alert(
+        "Error",
+        "Spotify access token is missing. Please log in again."
+      );
+      return null;
+    }
+    return accessToken;
+  }
+  
+
+async function fetchSpotifyProfile(): Promise<any> {
+    const accessToken = await getValidAccessToken();
+    if (!accessToken) return null;
+  
+    try {
+      const response = await axios.get("https://api.spotify.com/v1/me", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching Spotify profile:", error);
+      return null;
+    }
+  }
+
 
 const Chat = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,10 +61,13 @@ const Chat = () => {
   const [chatList, setChatList] = useState([]);
   const scrollViewRef = useRef(null);
   const toggleSlider = () => setIsOpen(!isOpen);
-  const userID = auth.currentUser.uid;
-    let chatRef;
+  const [profile, setProfile] = useState<any>(null);
+//   const userID = profile.id;
+const [userID, setUserID] = useState("");
+//   const userID = auth.currentUser.uid;
+    const [chatRef, setChatRef] = useState([]);
   const handleChatSelect = async (chat) => {
-    chatRef = doc(db, "chats", chat.UID);
+    setChatRef(doc(db, "chats", chat.UID));
     
     const chatSnap = await getDoc(chatRef);
     const currentChat = chatSnap.data();
@@ -43,31 +80,53 @@ const Chat = () => {
 
   const [inputMessage, setInputMessage] = useState("");
 
-  const handleSendMessage = async() => {
+
+  useEffect(() => {
+    const initializeProfile = async () => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) return;
+
+      try {
+        const response = await axios.get("https://api.spotify.com/v1/me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        setProfile(response.data.id);
+        setUserID(response.data.id);
+      } catch (error) {
+        console.error("Error fetching Spotify profile:", error);
+      }
+    };
+
+    initializeProfile();
+  }, []);
+
+  const handleSendMessage = async () => {
     if (inputMessage.trim()) {
       const newMessage = {
         user: userID,
         dialog: inputMessage.trim(),
-        timestamp: Date.now(),
-        reply: {},
+        // reply: [],  // Ensure reply is always an object
+        // time: Date.now(),  // Use timestamp or Date object
       };
-
-      // Add the new message to the chat (pseudo-code, adjust for your DB logic)
+  
       const updatedChatContent = [...currentChatContent, newMessage];
       setCurrentChatContent(updatedChatContent);
-
+  
+      console.log("Updated chat content:", updatedChatContent);
+  
       try {
         await updateDoc(chatRef, {
-          content: arrayUnion(newMessage)
+          content: updatedChatContent,  // Make sure content is always updated correctly
         });
         console.log("Message sent!");
       } catch (error) {
         console.error("Error sending message:", error);
       }
-
+  
       setInputMessage("");
     }
   };
+  
 
   const handleAddChat = () => {
 
@@ -75,9 +134,7 @@ const Chat = () => {
 
   const fetchUserData = async () => {
     try {
-      const user = auth.currentUser;
-      const fetchedFriends = [];
-      if (user) {
+      if (userID) {
         // Reference to the specific user profile by UID
         const userRef = doc(db, "profiles", `${userID}`);
         const docSnap = await getDoc(userRef);
@@ -124,7 +181,7 @@ const Chat = () => {
 
   useEffect(() => {
     fetchUserData();
-  }, []);
+  }, [userID]);
 
   if (loading) {
     return (
@@ -159,7 +216,6 @@ const Chat = () => {
           {chatList.map((chat, index) => (
             <View key={index} style={styles.itemContainer}>
               <TouchableOpacity onPress={() => handleChatSelect(chat)}>
-                {console.log(chat.name)}
                 <Image source={chat.imgPath} style={styles.itemImage} />
                 {isOpen && <Text style={styles.usernameText}>{chat.name}</Text>}
               </TouchableOpacity>
@@ -172,7 +228,7 @@ const Chat = () => {
           {/* {isOpen && <Text style={styles.buttonOpenText}>☰</Text>} */}
         </TouchableOpacity>
       </View>
-      <View style={styles.container}>
+      <View style={[styles.container, isOpen ? styles.containerOpen : null]}>
         <Text style={styles.header}>{currentChatName}</Text>
         {/* Chat Messages */}
         <ScrollView
@@ -274,9 +330,11 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 24,
     fontWeight: "bold",
+    padding:10,
+    backgroundColor: "#ffd3b6",
   },
   open: {
-    width:"40%",
+    width:"35%",
     alignItems : "left",
     // marginLeft: 200, // Slide out content when the bar is open
   },
@@ -378,6 +436,9 @@ const styles = StyleSheet.create({
   },
   userMessageBox:{
     backgroundColor:"#f9ffea",
+  },
+  containerOpen:{
+    marginLeft:"35%",
   },
 });
 

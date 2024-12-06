@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { RefreshControl } from "react-native";
 import {
   View,
   Text,
@@ -161,19 +162,29 @@ const ProfilePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [deleteSong, setDeleteSong] = useState(false);
   const [deleteAlbum, setDeleteAlbum] = useState(false);
+  const [followers, setFollowers] = useState(0);
+  const [following, setFollowing] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // const handleThreeSongs = () => {
-  //   if (favoriteSongs.length >= 3) {
-  //     // setSearchModalVisible(false);
-  //     Alert.alert("Limit Reached", "You can only add up to 3 favorite songs.");
-  //     return;
-  //   }
-  //   setSearchModalVisible(true);
-  // };
+  const onRefresh = async () => {
+    if (!profile || !profile.id) {
+      console.error("Profile data is not available for refresh.");
+      setRefreshing(false);
+      return;
+    }
 
-  // const editFavoriteSongs = () => {
-  //   setDeleteSong(true);
-  // };
+    try {
+      setRefreshing(true);
+      await Promise.all([
+        fetchFavoriteSongs(profile.id),
+        fetchFavoriteAlbums(profile.id),
+      ]);
+    } catch (error) {
+      console.error("Error refreshing content:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const fetchFavoriteSongs = async (userId: string) => {
     try {
@@ -235,12 +246,6 @@ const ProfilePage = () => {
 
     initializeProfile();
   }, []);
-
-  // useEffect(() => {
-  //   if (profile?.id) {
-  //     fetchPreviouslyPostedDates(profile.id);
-  //   }
-  // }, [profile]);
 
   const handleRemoveFavoriteSong = async (songId: string) => {
     const userId = await SecureStore.getItemAsync("userProfile");
@@ -322,7 +327,14 @@ const ProfilePage = () => {
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <ScrollView>
+      <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          ></RefreshControl>
+        }
+      >
         <View style={styles.container}>
           {/* Profile Header */}
           <View style={styles.header}>
@@ -337,6 +349,17 @@ const ProfilePage = () => {
             <Text style={styles.name}>{profile?.display_name || "User"}</Text>
             <Text style={styles.username}>@{profile?.id || "unknown"}</Text>
             <Text style={styles.description}>Music lover & Spotify fan</Text>
+          </View>
+
+          <View style={styles.follow}>
+            <View style={styles.followers}>
+              <Text style={styles.followersText}>{followers}</Text>
+              <Text style={styles.followersLabel}>Followers</Text>
+            </View>
+            <View style={styles.following}>
+              <Text style={styles.followingText}>{following}</Text>
+              <Text style={styles.followingLabel}>Following</Text>
+            </View>
           </View>
 
           {/* Now Playing */}
@@ -675,6 +698,17 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     marginLeft: 20,
   },
+  follow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 15,
+  },
+  followers: { alignItems: "center", marginLeft: 95 },
+  following: { alignItems: "center", marginRight: 95 },
+  followersLabel: { color: "white", fontWeight: "bold" },
+  followingLabel: { color: "white", fontWeight: "bold" },
+  followersText: { color: "white", fontSize: 18 },
+  followingText: { color: "white", fontSize: 18 },
 });
 
 export default ProfilePage;

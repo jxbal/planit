@@ -1,7 +1,6 @@
 import {
   StyleSheet,
   ScrollView,
-  Dimensions,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -9,12 +8,13 @@ import {
   RefreshControl,
   SafeAreaView,
 } from "react-native";
-import { Text, Modal, Alert, Pressable, View } from "react-native";
+import { Text, Modal, Alert, View } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { useState, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as SecureStore from "expo-secure-store";
 import SpotifyAuth from "../../spotifySongSearch";
+import { PostModal } from "@/components/PostModal";
 import {
   getFirestore,
   setDoc,
@@ -22,11 +22,16 @@ import {
   arrayUnion,
   updateDoc,
   getDoc,
+  collection,
+  limit,
+  where,
+  query,
+  getDocs,
 } from "firebase/firestore";
 import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
-import * as ImagePicker from "expo-image-picker";
 import * as Localization from "expo-localization";
+import { StackActions } from "@react-navigation/native";
 
 const db = getFirestore();
 
@@ -40,30 +45,25 @@ interface SpotifyTrack {
   };
 }
 
+interface UserProfile {
+  id: string;
+  name: string;
+  profile_photo?: string;
+  username: string;
+}
+
 export default function MainPage() {
   const [postButtonVisible, setPostButtonVisible] = useState(true);
   const [postModalVisible, setPostModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState<UserProfile[]>([]);
+  const [profiles, setProfiles] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
-  const [sendPostVisible, setSendPostVisible] = useState(false);
-  const [caption, setCap] = useState("");
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [image, setImage] = useState<string | null>(null);
-  const [viewIndex, setViewIndex] = useState(0);
   const [feed, setFeed] = useState<any[]>([]);
-  const [photoModal, setPhotoModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  const openPhotoModal = () => {
-    setPhotoModal(true);
-  };
-
-  const closePhotoModal = () => {
-    setPhotoModal(false);
-  };
+  const [searchUserModal, setSearchUserModal] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -90,16 +90,14 @@ export default function MainPage() {
       await updateDoc(userDocRef, {
         posts: [],
       });
-
       console.log("Posts moved to archived successfully");
     }
   }
 
   const getTimezoneOffset = () => {
-    const timezone = Localization.timezone; // e.g., "America/New_York"
+    const timezone = Localization.timezone;
     const date = new Date();
 
-    // Use Intl.DateTimeFormat to get the timezone offset
     const formatter = new Intl.DateTimeFormat("en", {
       timeZone: timezone,
       timeZoneName: "short",
@@ -120,10 +118,8 @@ export default function MainPage() {
   function isMidnight() {
     const userTimezoneOffset = getTimezoneOffset();
     const now = new Date();
-    // Subtract the timezone offset from the current time
     const adjustedNow = new Date(now.getTime() + userTimezoneOffset * 60000);
 
-    // Check if it's exactly midnight
     return adjustedNow.getHours() === 0 && adjustedNow.getMinutes() === 0;
   }
 
@@ -132,11 +128,10 @@ export default function MainPage() {
 
     const intervalId = setInterval(() => {
       if (isMidnight()) {
-        // Move posts to archived and clear current feed
         movePostsToArchived(profile.id)
           .then(() => {
-            // Clear local feed (UI update)
             setFeed([]);
+            setPostButtonVisible(true);
           })
           .catch((error) => {
             console.error("Error moving posts to archived:", error);
@@ -146,54 +141,14 @@ export default function MainPage() {
             );
           });
       }
-    }, 60000); // Check every minute
+    }, 60000);
 
-    // Cleanup interval on unmount
     return () => clearInterval(intervalId);
   }, [profile]);
 
-  const handlePostNow = async () => {
-    if (selectedTrack && caption && sendPostVisible && profile?.id) {
-      // Create a sanitized version of the selected track
-      const sanitizedTrack = {
-        id: selectedTrack.id,
-        name: selectedTrack.name,
-      };
-
-      const newPost = {
-        track: sanitizedTrack,
-        caption: caption,
-        image: image,
-        albumCover: selectedTrack.album.images[0].url,
-        artistName: selectedTrack.artists
-          .map((artist) => artist.name)
-          .join(", "),
-        name: profile?.display_name || "Unknown User",
-        username: profile?.id || "Unknown User",
-        timestamp: new Date().toLocaleString(),
-      };
-
-      try {
-        const userDocRef = doc(db, "profiles", profile.id);
-        await updateDoc(userDocRef, {
-          posts: arrayUnion(newPost),
-        });
-
-        setFeed([newPost, ...feed]);
-        closeModal();
-        setPostButtonVisible(false);
-      } catch (error) {
-        console.error("Error saving post to Firestore:", error);
-        Alert.alert("Error", "Failed to post. Please try again.");
-      }
-    } else {
-      alert("Please select a song and add a caption!");
-    }
-  };
-
-  const fetchPosts = async (userId: string) => {
+  const fetchPosts = async (userID: string) => {
     try {
-      const userDocRef = doc(db, "profiles", userId);
+      const userDocRef = doc(db, "profiles", userID);
       const userDocSnap = await getDoc(userDocRef);
 
       if (userDocSnap.exists()) {
@@ -223,7 +178,6 @@ export default function MainPage() {
   interface TokenFetchedHandler {
     (token: string): void;
   }
-  const [draftModal, setDraftModal] = useState(false);
 
   const handleTokenFetched: TokenFetchedHandler = (token) => {
     if (!accessToken) {
@@ -233,7 +187,14 @@ export default function MainPage() {
 
   const openModal = () => {
     setPostModalVisible(true);
-    setPostButtonVisible(false);
+  };
+
+  const openSearchUserModal = () => {
+    setSearchUserModal(true);
+  };
+
+  const closeSearchUserModal = () => {
+    setSearchUserModal(false);
   };
 
   const closeModal = () => {
@@ -241,55 +202,46 @@ export default function MainPage() {
     setPostButtonVisible(true);
   };
 
-  const searchSpotify = async (query: string) => {
-    if (!query.trim()) {
-      setTracks([]);
+  const searchUserProfile = async (userSearchQuery: string) => {
+    if (!userSearchQuery.trim()) {
+      setUserSearchResults([]);
       return;
     }
 
     setIsLoading(true);
     try {
-      // const token = await SecureStore.getItemAsync('spotify_token');
-      if (!accessToken) {
-        console.error("No Spotify token found");
-        return;
-      }
-
-      const response = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(
-          query
-        )}&type=track&limit=10`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const userDocRef = collection(db, "users");
+      const q = query(
+        userDocRef,
+        where("username", ">=", userSearchQuery.toLowerCase()),
+        where("username", "<=", userSearchQuery.toLowerCase() + "\uf8ff"),
+        limit(10)
       );
-
-      const data = await response.json();
-
-      if (data.tracks) {
-        setTracks(data.tracks.items);
-      }
+      const querySnapshot = await getDocs(q);
+      const results: UserProfile[] = [];
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        results.push({
+          id: doc.id,
+          name: userData?.name || "Unknown User",
+          profile_photo: userData.profile_photo || null,
+          username: userData.username || doc.id,
+        });
+      });
+      setUserSearchResults(results);
     } catch (error) {
-      console.error("Error searching Spotify:", error);
-      Alert.alert("Error", "Failed to search for songs. Please try again.");
+      console.error("error fetching profile", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (searchQuery === "") {
-      setTracks([]);
-      return;
-    }
     const timeoutId = setTimeout(() => {
-      searchSpotify(searchQuery);
+      searchUserProfile(userSearchQuery);
     }, 500);
-
     return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
+  }, [userSearchQuery]);
 
   async function getValidAccessToken(): Promise<string | null> {
     const accessToken = await SecureStore.getItemAsync("spotify_token");
@@ -328,73 +280,8 @@ export default function MainPage() {
     fetchProfile();
   }, []);
 
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
-    setSelectedTrack(null);
-    setSendPostVisible(false);
-  };
-
-  const setCaption = (text: string) => {
-    setCap(text);
-  };
-
-  const handleTrackSelect = (track: SpotifyTrack) => {
-    setSelectedTrack(track);
-    setSendPostVisible(true);
-    setSearchQuery("");
-  };
-
-  const closeSelectedSong = () => {
-    setSelectedTrack(null);
-    setSendPostVisible(false);
-    setCap("");
-  };
-
-  const selectImage = async () => {
-    try {
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        setImage(result.assets[0].uri);
-        setViewIndex(1);
-      }
-    } catch (error) {
-      console.error("Error selecting image:", error);
-      Alert.alert("Error", "Failed to select image. Please try again.");
-    }
-  };
-
-  const takeImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission needed",
-          "Camera permission is required to take photos."
-        );
-        return;
-      }
-      let result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-      if (!result.canceled) {
-        setImage(result.assets[0].uri);
-        setViewIndex(1);
-        setPhotoModal(false);
-      }
-    } catch (error) {
-      console.error("Error taking image:", error);
-      Alert.alert("Error", "Failed to select image. Please try again.");
-    }
+  const handleUserSearch = (text: string) => {
+    setUserSearchQuery(text);
   };
 
   useEffect(() => {
@@ -413,10 +300,7 @@ export default function MainPage() {
   }, [profile]);
 
   return (
-    <LinearGradient
-      colors={["#ffffff", "#d9b3b3"]} // White to Maroon
-      style={{ flex: 1 }}
-    >
+    <LinearGradient colors={["#ffffff", "#d9b3b3"]} style={{ flex: 1 }}>
       <SafeAreaView style={styles.safeAreaViewHome}>
         <View style={{ flex: 1 }}>
           <ScrollView
@@ -431,192 +315,101 @@ export default function MainPage() {
               <SpotifyAuth onTokenFetched={handleTokenFetched} />
               {postButtonVisible && (
                 <TouchableOpacity style={styles.postButton} onPress={openModal}>
-                  <Ionicons name="add-circle" size={32} color="#A52A2A" />
+                  <Ionicons name="add-circle" size={40} color="#A52A2A" />
                 </TouchableOpacity>
               )}
+              <TouchableOpacity
+                style={styles.searchButton}
+                onPress={openSearchUserModal}
+              >
+                <Ionicons
+                  name="search-circle"
+                  size={43}
+                  color="#A52A2a"
+                ></Ionicons>
+              </TouchableOpacity>
+
               <Modal
                 animationType="slide"
                 transparent={true}
-                visible={postModalVisible}
-                onRequestClose={closeModal}
+                visible={searchUserModal}
+                onRequestClose={closeSearchUserModal}
               >
-                <View style={styles.modalContainer}>
-                  <View style={styles.postView}>
-                    <ThemedText style={styles.postText}>New Post</ThemedText>
-                    <Pressable
-                      style={[styles.postButton, styles.leavePostButton]}
-                      onPress={closeModal}
+                <View style={styles.searchUserModalContainer}>
+                  <View style={styles.searchUserView}>
+                    <Text style={styles.searchUserModalText}>
+                      Search for a User
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.closeSearchUserModal}
+                      onPress={closeSearchUserModal}
                     >
                       <Ionicons name="close-circle" size={32} color="#A52A2A" />
-                    </Pressable>
-
-                    <View style={styles.searchContainer}>
+                    </TouchableOpacity>
+                    <View style={styles.userSearchBarContainer}>
                       <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search for a song..."
-                        value={searchQuery}
-                        onChangeText={handleSearch}
+                        style={styles.userSearchBar}
+                        placeholder="Search for a User..."
+                        value={userSearchQuery}
+                        onChangeText={handleUserSearch}
                         placeholderTextColor="#666"
-                      />
-                      {isLoading && <ActivityIndicator style={styles.loader} />}
+                      ></TextInput>
+                      {isLoading && (
+                        <ActivityIndicator style={styles.userSearchLoader} />
+                      )}
                     </View>
-
-                    <ScrollView style={styles.searchResults}>
-                      {tracks.map((track) => (
+                    <ScrollView style={styles.userSearchResults}>
+                      {userSearchResults.map((user) => (
                         <TouchableOpacity
-                          key={track.id}
-                          style={styles.trackItem}
-                          onPress={() => handleTrackSelect(track)}
+                          key={user.id}
+                          style={styles.userItem}
+                          onPress={() => {
+                            // Handle user selection here
+                            setProfile(user);
+                            closeSearchUserModal();
+                          }}
                         >
-                          {track.album.images.length > 0 && (
-                            <Image
-                              style={styles.trackAlbumCover}
-                              source={{ uri: track.album.images[0].url }}
-                            />
-                          )}
-                          <View style={styles.trackDetails}>
-                            <Text style={styles.trackName}>{track.name}</Text>
-                            <Text style={styles.artistName}>
-                              {track.artists
-                                .map((artist) => artist.name)
-                                .join(", ")}
+                          <View style={styles.userProfilePhoto}>
+                            {user.profile_photo ? (
+                              <Image
+                                source={{ uri: user.profile_photo }}
+                                style={styles.profileImage}
+                              />
+                            ) : (
+                              <View style={styles.defaultProfileImage}>
+                                <Ionicons
+                                  name="person"
+                                  size={24}
+                                  color="#666"
+                                />
+                              </View>
+                            )}
+                          </View>
+                          <View style={styles.userDetails}>
+                            <Text style={styles.userDisplayName}>
+                              {user.name}
+                            </Text>
+                            <Text style={styles.userUsername}>
+                              @{user.username}
                             </Text>
                           </View>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
-
-                    {selectedTrack && (
-                      <View style={styles.selectedTrackContainer}>
-                        <TouchableOpacity
-                          style={styles.closeSong}
-                          onPress={closeSelectedSong}
-                        >
-                          <Ionicons
-                            name="close-circle"
-                            size={32}
-                            color="#A52A2A"
-                          />
-                        </TouchableOpacity>
-                        <Text style={styles.selectedTrackTitle}>
-                          Selected Song:
-                        </Text>
-                        <Text style={styles.selectedTrackName}>
-                          {selectedTrack.name}
-                        </Text>
-                        <Text style={styles.selectedTrackArtist}>
-                          {selectedTrack.artists
-                            .map((artist) => artist.name)
-                            .join(", ")}
-                        </Text>
-                        {selectedTrack.album.images.length > 0 && (
-                          <Image
-                            style={styles.albumCover}
-                            source={{ uri: selectedTrack.album.images[0].url }}
-                          />
-                        )}
-                      </View>
-                    )}
-
-                    {sendPostVisible && (
-                      <>
-                        {/* <ThemedText style={styles.postText}>Add a Caption</ThemedText> */}
-                        <View style={styles.photoContainer}>
-                          <TouchableOpacity
-                            style={styles.addPhoto}
-                            // onPress={selectImage}
-                            onPress={openPhotoModal}
-                          >
-                            {photoModal && (
-                              <Modal
-                                animationType="slide"
-                                transparent={true}
-                                visible={photoModal}
-                                onRequestClose={closePhotoModal}
-                              >
-                                <View style={styles.photoModalContainer}>
-                                  <View style={styles.photoModalContent}>
-                                    <View style={styles.photoModalHeader}>
-                                      <Text style={styles.photoModalTitle}>
-                                        Choose Photo Option
-                                      </Text>
-                                      <TouchableOpacity
-                                        onPress={closePhotoModal}
-                                      >
-                                        <Ionicons
-                                          name="close"
-                                          size={24}
-                                          color="#333"
-                                        />
-                                      </TouchableOpacity>
-                                    </View>
-                                    <TouchableOpacity
-                                      style={styles.photoModalButton}
-                                      onPress={takeImage}
-                                    >
-                                      <Ionicons
-                                        name="camera"
-                                        size={24}
-                                        color="#A52A2A"
-                                        style={styles.photoModalIcon}
-                                      />
-                                      <Text style={styles.photoModalButtonText}>
-                                        Take Photo
-                                      </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                      style={styles.photoModalButton}
-                                      onPress={selectImage}
-                                    >
-                                      <Ionicons
-                                        name="image"
-                                        size={24}
-                                        color="#A52A2A"
-                                        style={styles.photoModalIcon}
-                                      />
-                                      <Text style={styles.photoModalButtonText}>
-                                        Choose from Library
-                                      </Text>
-                                    </TouchableOpacity>
-                                  </View>
-                                </View>
-                              </Modal>
-                            )}
-                            <Text style={styles.addPhotoText}>Add a Photo</Text>
-                            {image && (
-                              <Ionicons
-                                name="checkmark-circle"
-                                size={24}
-                                color="white"
-                                style={styles.checkmarkIcon}
-                              />
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                        <View style={styles.captionContainer}>
-                          <TextInput
-                            style={styles.caption}
-                            placeholder="Add a caption..."
-                            placeholderTextColor="#666"
-                            value={caption}
-                            onChangeText={setCaption}
-                          />
-                        </View>
-                        <View style={styles.sendPostButtonContainer}>
-                          <TouchableOpacity
-                            style={styles.sendPostButton}
-                            onPress={handlePostNow}
-                          >
-                            <Text style={styles.sendPostButtonText}>
-                              Post Now
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </>
-                    )}
                   </View>
                 </View>
               </Modal>
+              <PostModal
+                visible={postModalVisible}
+                onClose={closeModal}
+                accessToken={accessToken}
+                profile={profile}
+                onPostSuccess={() => {
+                  setFeed((prevFeed) => [...prevFeed]);
+                  setPostButtonVisible(false);
+                  closeModal();
+                }}
+              />
               <ThemedText style={styles.username}>
                 Hi @{profile?.display_name || "username"}
               </ThemedText>
@@ -642,6 +435,10 @@ export default function MainPage() {
                               {post.track.name}
                             </Text>
                           </View>
+                          {/* <PreviewPlayer
+                            trackId={selectedTrack.id}
+                            accessToken={accessToken}
+                          /> */}
                         </View>
                         <Text style={styles.postCaption}>{post.caption}</Text>
                         {post.image && (
@@ -688,7 +485,7 @@ const styles = StyleSheet.create({
     color: "#800000",
   },
   postButton: {
-    marginTop: 30,
+    marginTop: 22,
     position: "absolute",
     width: 60,
     height: 60,
@@ -697,26 +494,9 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  postText: {
-    color: "black",
-    marginTop: 30,
-    fontSize: 25,
-  },
-  selectSong: {
-    color: "black",
-    marginTop: 30,
-    fontSize: 25,
-  },
-  closeSong: {
-    position: "absolute",
-    width: 50,
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    right: 0,
-    top: 0,
-  },
-  leavePostButton: {
+  searchButton: {
+    marginTop: 22,
+    marginRight: 50,
     position: "absolute",
     width: 60,
     height: 60,
@@ -725,147 +505,13 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  searchContainer: {
-    width: "90%",
-    marginTop: 20,
-    position: "relative",
-  },
-  searchInput: {
-    backgroundColor: "#f0f0f0",
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    width: "100%",
-  },
-  loader: {
-    position: "absolute",
-    right: 10,
-    top: 12,
-  },
-  trackAlbumCover: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginRight: 15,
-  },
-  albumCover: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-    marginTop: 10,
-    alignSelf: "center",
-  },
-  searchResults: {
-    width: "90%",
-    maxHeight: 300,
-    marginTop: 10,
-  },
-  trackItem: {
+  selectedTrackHeader: {
     flexDirection: "row",
-    padding: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  trackDetails: {
-    flexDirection: "column",
-    backgroundColor: "#ffffff",
-  },
-  trackName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
-    width: 200,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  artistName: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-    width: 200,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  selectedTrackContainer: {
-    width: "90%",
-    padding: 15,
-    backgroundColor: "#f8f8f8",
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  selectedTrackTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 8,
-  },
-  selectedTrackName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  selectedTrackArtist: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 4,
-  },
-  photoContainer: {
-    width: "100%", // Remove flex: 1
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 30,
-  },
-  addPhoto: {
-    backgroundColor: "#A52A2A",
-    marginTop: -10,
-    width: 280,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  addPhotoText: {
-    color: "white",
-    fontSize: 20,
-  },
-  checkmarkIcon: {
-    position: "absolute",
-    right: 10,
-    top: 0,
-  },
-  captionContainer: {
-    width: "90%",
-    marginTop: 25,
-    position: "relative",
-    height: 100,
-  },
-  caption: {
-    backgroundColor: "#f0f0f0",
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    height: 80,
     width: "100%",
   },
-  sendPostButtonContainer: {
-    backgroundColor: "#A52A2A",
-    borderRadius: 8,
-    width: "90%",
-    marginTop: 0,
-    alignItems: "center",
-  },
-  sendPostButton: {
-    backgroundColor: "#A52A2A",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    width: 250,
-    alignItems: "center",
-  },
-  sendPostButtonText: {
-    color: "white",
-    fontSize: 25,
-  },
-  modalContainer: {
+  searchUserModalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -875,7 +521,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  postView: {
+  searchUserView: {
     backgroundColor: "white",
     borderRadius: 20,
     width: "90%",
@@ -890,6 +536,91 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  searchUserModalText: {
+    fontSize: 25,
+    paddingVertical: 20,
+  },
+  userSearchResults: {
+    width: "100%",
+    maxHeight: 300,
+    marginTop: 10,
+  },
+  userItem: {
+    flexDirection: "row",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    alignItems: "center",
+  },
+  userProfilePhoto: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+  },
+  profileImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+  },
+  defaultProfileImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  userDetails: {
+    flex: 1,
+  },
+  userDisplayName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  userUsername: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
+  },
+  userSearchBarContainer: {
+    width: "100%",
+    paddingVertical: 10,
+  },
+  userSearchBar: {
+    backgroundColor: "#f0f0f0",
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    width: "100%",
+  },
+  closeSearchUserModal: { marginTop: -35, marginRight: -300 },
+  // userSearchBarContainer: {
+  //   width: 300,
+  //   paddingVertical: 10,
+  // },
+  // userSearchBar: {
+  //   backgroundColor: "#f0f0f0",
+  //   padding: 12,
+  //   borderRadius: 8,
+  //   fontSize: 16,
+  //   width: "100%",
+  // },
+  loader: {
+    position: "absolute",
+    right: 10,
+    top: 12,
+  },
+  userSearchLoader: {
+    position: "absolute",
+    right: 10,
+    top: 20,
+  },
+  checkmarkIcon: {
+    position: "absolute",
+    right: 10,
+    top: 0,
   },
   feedScroll: {
     marginBottom: 20,
@@ -994,56 +725,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#555",
     marginRight: 30,
-  },
-  photoModalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  photoModalContent: {
-    backgroundColor: "white",
-    borderRadius: 15,
-    padding: 20,
-    width: "80%",
-    maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  photoModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  photoModalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  photoModalButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-    backgroundColor: "#f8f8f8",
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  photoModalButtonText: {
-    fontSize: 16,
-    color: "#333",
-    marginLeft: 10,
-  },
-  photoModalIcon: {
-    marginRight: 5,
   },
 });

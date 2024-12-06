@@ -26,6 +26,7 @@
     "expo": "^52.0.7",
     "expo-app-auth": "~11.1.0",
     "expo-auth-session": "~6.0.0",
+    "expo-av": "~15.0.1",
     "expo-calendar": "~14.0.3",
     "expo-constants": "~17.0.3",
     "expo-font": "~13.0.1",

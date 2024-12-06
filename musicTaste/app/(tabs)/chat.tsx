@@ -137,6 +137,7 @@ const Chat = () => {
   const screenHeight = Dimensions.get("window").height;
   const firstItemHeight = 80; // Adjust this value based on your item's height
 
+
   return (
     <View style={styles.containerRow}>
       <View style={[styles.slider, isOpen ? styles.open : null]}>
@@ -218,74 +219,11 @@ const Chat = () => {
             style={styles.sendButton}
             onPress={handleSendMessage}
           >
-            {friendList.map((friend, index) => (
-              <View key={index} style={styles.itemContainer}>
-                <TouchableOpacity onPress={() => handleFriendSelect(friend)}>
-                  <Image source={friend.imgPath} style={styles.itemImage} />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-          <TouchableOpacity style={styles.toggleButton} onPress={toggleSlider}>
-            <Text style={styles.buttonText}>☰</Text>
+            <Text style={styles.sendButtonText}>Send</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.container}>
-          <Text style={styles.header}>{currentChatName}</Text>
-          {/* Chat Messages */}
-          <ScrollView
-            contentContainerStyle={styles.scrollView}
-            ref={scrollViewRef}
-            onContentSizeChange={() =>
-              scrollViewRef.current?.scrollToEnd({ animated: true })
-            }
-          >
-            {currentChatContent &&
-              currentChatContent
-                .slice()
-                //   .reverse()
-                .map((dialogInfo, index) => {
-                  const isUserMessage = dialogInfo.user === userID;
-                  return (
-                    <View key={index} style={styles.messageContainer}>
-                      <View
-                        style={[styles.row, isUserMessage && styles.rightRow]}
-                      >
-                        <Image
-                          source={require("../../assets/images/1.png")}
-                          style={styles.itemImage}
-                        />
-                        <Text style={styles.usernameText}>
-                          {currentChatNickName[dialogInfo.user]}
-                        </Text>
-                      </View>
-                      <View style={styles.messageBox}>
-                        <Text style={styles.messageText}>
-                          {dialogInfo.dialog}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-          </ScrollView>
-
-          {/* Input Box */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Type your message..."
-              value={inputMessage}
-              onChangeText={setInputMessage}
-            />
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={handleSendMessage}
-            >
-              <Text style={styles.sendButtonText}>Send</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </View>
+    </View>
   );
 };
 

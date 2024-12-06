@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, TextInput, Button, StyleSheet, Text, Alert } from "react-native";
+import {
+  View,
+  TextInput,
+  Button,
+  StyleSheet,
+  Text,
+  Alert,
+  SafeAreaView,
+} from "react-native";
 import * as AuthSession from "expo-auth-session";
 import { ResponseType } from "expo-auth-session";
 import { useRouter } from "expo-router";
@@ -7,9 +15,12 @@ import * as SecureStore from "expo-secure-store";
 import { auth } from "../../firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import axios from "axios";
+import { doc, setDoc, getFirestore, getDoc } from "firebase/firestore";
 
 const CLIENT_ID = "d442d42b1e6f4b37ad8305f045d5d160";
 const CLIENT_SECRET = "9f641cacf31e4745a6fd9a0d3de5e951";
+
+const db = getFirestore();
 
 const developmentRedirectURI = AuthSession.makeRedirectUri({
   scheme: "musictaste",
@@ -93,13 +104,67 @@ const LoginPage: React.FC = () => {
         }
       );
       const spotifyUserID = userInfoResponse.data.id;
+      const username = userInfoResponse.data.id;
+      const name = userInfoResponse.data.display_name || username;
       await SecureStore.setItemAsync("userProfile", spotifyUserID);
+      await saveUserToFirestore(spotifyUserID, username, name);
       console.log("Spotify user ID stored as userProfile:", spotifyUserID);
     } catch (error) {
       console.error("Error fetching Spotify user ID:", error);
     }
   };
 
+  async function saveUserToFirestore(
+    userID: string,
+    username: string,
+    name: string
+  ) {
+    try {
+      // First, try to retrieve the existing document to preserve posts
+      const userDocRef = doc(db, "profiles", userID);
+      const userDocSnap = await getDoc(userDocRef);
+      const usersDocRef = doc(db, "users", userID);
+      const usersDocSnap = await getDoc(usersDocRef);
+
+      // Get existing posts if they exist
+      const existingPosts = userDocSnap.exists()
+        ? userDocSnap.data().posts || []
+        : [];
+      const archivedPosts = usersDocSnap.exists()
+        ? usersDocSnap.data().archivedPosts || []
+        : [];
+
+      console.log("Attempting to save user:", { userID, username, name });
+      await setDoc(
+        userDocRef,
+        {
+          username: username,
+          name: name,
+          followers: [],
+          following: [],
+          posts: existingPosts,
+        },
+        { merge: true }
+      );
+
+      await setDoc(
+        doc(db, "users", userID),
+        {
+          username: username,
+          name: name,
+          archivedPosts: archivedPosts,
+        },
+        { merge: true }
+      );
+      console.log(`New user ${username} saved to Firestore successfully`);
+    } catch (error) {
+      console.error("Detailed Firestore save error:", error);
+      if (error instanceof Error) {
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+      }
+    }
+  }
   const handleLogin = () => {
     signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
@@ -139,45 +204,55 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Nonstop</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Welcome to Nonstop!</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <Button title="Login" onPress={handleLogin} />
-      <Button title="Sign Up" onPress={handleSignUp} />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        <Button title="Login" onPress={handleLogin} />
+        <Button title="Sign Up" onPress={handleSignUp} />
 
-      <View style={styles.separator} />
-      <Button
-        title="Login with Spotify"
-        color="#1DB954"
-        onPress={handleSpotifyLogin}
-        disabled={!request}
-      />
+        <View style={styles.separator} />
+        <Button
+          title="Login with Spotify"
+          color="#1DB954"
+          onPress={handleSpotifyLogin}
+          disabled={!request}
+        />
 
-      {accessToken && (
-        <Text style={styles.tokenText} numberOfLines={1} ellipsizeMode="middle">
-          Token: {accessToken}
-        </Text>
-      )}
-    </View>
+        {accessToken && (
+          <Text
+            style={styles.tokenText}
+            numberOfLines={1}
+            ellipsizeMode="middle"
+          >
+            Token: {accessToken}
+          </Text>
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f0f0f0", // Matches the container background
+  },
   container: {
     flex: 1,
     justifyContent: "center",
@@ -185,6 +260,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
   },
   title: {
+    padding: 30,
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 20,

@@ -11,56 +11,66 @@ import {
   TextInput,
 } from "react-native";
 import { db, auth } from "../../firebaseConfig";
-import { getDoc, doc } from "firebase/firestore";
+import { getDoc, doc, updateDoc } from "firebase/firestore";
 import { FadeInRight } from "react-native-reanimated";
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 const Chat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [friendList, setFriendList] = useState([]);
+//   const [friendList, setFriendList] = useState([]);
+//   const [chatRef, setChatRef] = useState([]);
   const [currentChatName, setCurrentChatName] = useState([]);
   const [currentChatContent, setCurrentChatContent] = useState([]);
   const [currentChatNickName, setCurrentChatNickName] = useState([]);
+  const [chatList, setChatList] = useState([]);
   const scrollViewRef = useRef(null);
   const toggleSlider = () => setIsOpen(!isOpen);
   const userID = auth.currentUser.uid;
-
-  const handleFriendSelect = async (friend) => {
     let chatRef;
-    if (friend.UID.localeCompare(userID) > 0) {
-      chatRef = doc(db, "chats", `${userID + friend.UID}`);
-    } else {
-      chatRef = doc(db, "chats", `${friend.UID + userID}`);
-    }
+  const handleChatSelect = async (chat) => {
+    chatRef = doc(db, "chats", chat.UID);
+    
     const chatSnap = await getDoc(chatRef);
     const currentChat = chatSnap.data();
     setCurrentChatNickName(currentChat.nickname);
     setCurrentChatContent(currentChat.content);
-    if ("name" in currentChat && currentChat.name != "") {
+    // if ("name" in currentChat && currentChat.name != "") {
       setCurrentChatName(currentChat.name);
-    } else {
-      setCurrentChatName(friend.name);
-    }
+    // }
   };
 
   const [inputMessage, setInputMessage] = useState("");
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async() => {
     if (inputMessage.trim()) {
-      // Logic to add the message to the current chat
       const newMessage = {
-        user: userID, // Replace with the current user's UID
+        user: userID,
         dialog: inputMessage.trim(),
         timestamp: Date.now(),
+        reply: {},
       };
 
       // Add the new message to the chat (pseudo-code, adjust for your DB logic)
       const updatedChatContent = [...currentChatContent, newMessage];
       setCurrentChatContent(updatedChatContent);
 
+      try {
+        await updateDoc(chatRef, {
+          content: arrayUnion(newMessage)
+        });
+        console.log("Message sent!");
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }
+
       setInputMessage("");
     }
   };
+
+  const handleAddChat = () => {
+
+  }
 
   const fetchUserData = async () => {
     try {
@@ -70,22 +80,38 @@ const Chat = () => {
         // Reference to the specific user profile by UID
         const userRef = doc(db, "profiles", `${userID}`);
         const docSnap = await getDoc(userRef);
+        const chatInfos = [];
         if (docSnap.exists()) {
-          for (let i = 0; i < docSnap.data().friend.length; i++) {
-            const friendUID = docSnap.data().friend[i]._key.path.segments[6];
-            const friendRef = doc(db, "profiles", friendUID);
-            const friendSnap = await getDoc(friendRef);
-            const imageName = friendSnap.data().img;
-            const imgPath = imageName
+            for (let i = 0; i < docSnap.data().chatGroup.length; i++){
+                const chatUID = docSnap.data().chatGroup[i];
+                const chatSnap = await getDoc(doc(db, "chats", chatUID));
+                const imageName = chatSnap.data().groupImg;
+                // console.log(chatSnap.data())
+                const imgPath = imageName
               ? imageName
-              : require("../../assets/images/1.png");
-            fetchedFriends.push({
-              name: friendSnap.data().username,
-              imgPath: imgPath,
-              UID: friendUID,
-            });
-          }
-          setFriendList(fetchedFriends);
+              : require("../../assets/images/3cherry.png");
+              chatInfos.push({
+                name : chatSnap.data().name,
+                imgPath: imgPath,
+                UID: chatUID
+              });
+            }
+        setChatList(chatInfos)
+        //   for (let i = 0; i < docSnap.data().friend.length; i++) {
+        //     const friendUID = docSnap.data().friend[i]._key.path.segments[6];
+        //     const friendRef = doc(db, "profiles", friendUID);
+        //     const friendSnap = await getDoc(friendRef);
+        //     const imageName = friendSnap.data().img;
+        //     const imgPath = imageName
+        //       ? imageName
+        //       : require("../../assets/images/1.png");
+        //     fetchedFriends.push({
+        //       name: friendSnap.data().username,
+        //       imgPath: imgPath,
+        //       UID: friendUID,
+        //     });
+        //   }
+        //   setFriendList(fetchedFriends);
         }
       }
     } catch (error) {
@@ -111,8 +137,8 @@ const Chat = () => {
   const firstItemHeight = 80; // Adjust this value based on your item's height
 
   return (
-    <View style={[styles.containerRow, isOpen ? styles.open : null]}>
-      <View style={styles.slider}>
+    <View style={styles.containerRow}>
+      <View style={[styles.slider, isOpen ? styles.open : null]}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollViewSide,
@@ -121,16 +147,27 @@ const Chat = () => {
             },
           ]}
         >
-          {friendList.map((friend, index) => (
+
+            <View key = "addChat" style={styles.itemContainer}>
+                <TouchableOpacity onPress={() => handleAddChat}>
+                <AntDesign name="pluscircleo" size={50} color="white" />
+                {isOpen && <Text style={styles.usernameText}>add Chat</Text>}
+                </TouchableOpacity>
+            </View>
+          {chatList.map((chat, index) => (
             <View key={index} style={styles.itemContainer}>
-              <TouchableOpacity onPress={() => handleFriendSelect(friend)}>
-                <Image source={friend.imgPath} style={styles.itemImage} />
+              <TouchableOpacity onPress={() => handleChatSelect(chat)}>
+                {console.log(chat.name)}
+                <Image source={chat.imgPath} style={styles.itemImage} />
+                {isOpen && <Text style={styles.usernameText}>{chat.name}</Text>}
               </TouchableOpacity>
             </View>
           ))}
         </ScrollView>
         <TouchableOpacity style={styles.toggleButton} onPress={toggleSlider}>
-          <Text style={styles.buttonText}>☰</Text>
+            <Text style={styles.buttonText}>☰</Text>
+          {/* {!isOpen && <Text style={styles.buttonText}>☰</Text>} */}
+          {/* {isOpen && <Text style={styles.buttonOpenText}>☰</Text>} */}
         </TouchableOpacity>
       </View>
       <View style={styles.container}>
@@ -160,7 +197,7 @@ const Chat = () => {
                         {currentChatNickName[dialogInfo.user]}
                     </Text>
                   </View>
-                  <View style={styles.messageBox}>
+                  <View style={[styles.messageBox, isUserMessage && styles.userMessageBox]}>
                     <Text style={styles.messageText}>{dialogInfo.dialog}</Text>
                   </View>
                 </View>
@@ -197,6 +234,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "82%",
     marginLeft: "18%",
+    backgroundColor:"#ffecda",
   },
   slider: {
     width: "18%", // Set the width of the sliding bar
@@ -213,7 +251,15 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "white",
     fontSize: 24,
+    alignItems:"center",
   },
+//   buttonOpenText:{
+//     color: "white",
+//     fontSize: 24,
+//     width: "50%",
+//     alignItems:"center",
+//     marginLeft: auto,
+//   },
   content: {
     flex: 1,
     marginLeft: 60,
@@ -225,12 +271,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   open: {
-    marginLeft: 200, // Slide out content when the bar is open
+    width:"40%",
+    alignItems : "left",
+    // marginLeft: 200, // Slide out content when the bar is open
   },
   scrollViewSide: {
     flexGrow: 1,
     justifyContent: "flex-start", // This makes sure the content is aligned from the top
-    backgroundColor: "#6C98C4",
+    backgroundColor: "#ff847c",
   },
   scrollView: {
     // width: "82%",
@@ -266,7 +314,6 @@ const styles = StyleSheet.create({
   messageContainer: {
     marginVertical: 8,
     padding: 10,
-    backgroundColor: "#f4f4f4",
     borderRadius: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -284,10 +331,10 @@ const styles = StyleSheet.create({
   },
   messageBox: {
     padding: 10,
-    backgroundColor: "#fff",
     borderRadius: 5,
     borderColor: "#ccc",
     borderWidth: 1,
+    backgroundColor:"#bbded6",
   },
   messageText: {
     fontSize: 14,
@@ -320,6 +367,12 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  userNameSideBar:{
+    fontSize:18,
+  },
+  userMessageBox:{
+    backgroundColor:"#f9ffea",
   },
 });
 

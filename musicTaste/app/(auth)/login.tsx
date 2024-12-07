@@ -27,17 +27,14 @@ const developmentRedirectURI = AuthSession.makeRedirectUri({
   path: "spotify-auth",
 });
 
-// Production URI
 const productionRedirectURI = AuthSession.makeRedirectUri({
   scheme: "musictaste",
   path: "spotify-auth",
 });
 
-// Log both URIs to see what needs to be registered
 console.log("Development Redirect URI:", developmentRedirectURI);
 console.log("Production Redirect URI:", productionRedirectURI);
 
-// Use the development URI during development
 const REDIRECT_URI = developmentRedirectURI;
 
 const AUTH_ENDPOINT = "https://accounts.spotify.com/authorize";
@@ -47,7 +44,6 @@ const SCOPES = [
   "user-read-email",
   "user-read-currently-playing",
   "user-read-playback-state",
-  // Add other scopes as needed
 ];
 
 const LoginPage: React.FC = () => {
@@ -56,7 +52,6 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // Configure the authentication request
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: CLIENT_ID,
@@ -120,13 +115,11 @@ const LoginPage: React.FC = () => {
     name: string
   ) {
     try {
-      // First, try to retrieve the existing document to preserve posts
       const userDocRef = doc(db, "profiles", userID);
       const userDocSnap = await getDoc(userDocRef);
       const usersDocRef = doc(db, "users", userID);
       const usersDocSnap = await getDoc(usersDocRef);
 
-      // Get existing posts if they exist
       const existingPosts = userDocSnap.exists()
         ? userDocSnap.data().posts || []
         : [];
@@ -208,7 +201,7 @@ const LoginPage: React.FC = () => {
       <View style={styles.container}>
         <Text style={styles.title}>Welcome to Nonstop!</Text>
 
-        <TextInput
+        {/* <TextInput
           style={styles.input}
           placeholder="Email"
           value={email}
@@ -224,7 +217,7 @@ const LoginPage: React.FC = () => {
           secureTextEntry
         />
         <Button title="Login" onPress={handleLogin} />
-        <Button title="Sign Up" onPress={handleSignUp} />
+        <Button title="Sign Up" onPress={handleSignUp} /> */}
 
         <View style={styles.separator} />
         <Button
@@ -251,7 +244,7 @@ const LoginPage: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0f0f0", // Matches the container background
+    backgroundColor: "#f0f0f0",
   },
   container: {
     flex: 1,
@@ -276,7 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   separator: {
-    marginVertical: 10,
+    marginVertical: 0,
   },
   tokenText: {
     marginTop: 10,

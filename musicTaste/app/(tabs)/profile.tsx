@@ -98,6 +98,19 @@ async function removeFavoriteAlbumFromFirestore(
   }
 }
 
+async function saveProfilePhotoToFirestore(userId: string, photoUrl: string) {
+  try {
+    await setDoc(
+      doc(db, "users", userId),
+      { profilePhoto: photoUrl },
+      { merge: true }
+    );
+    console.log("Profile photo saved to Firestore.");
+  } catch (error) {
+    console.error("Error saving profile photo to Firestore:", error);
+  }
+}
+
 async function saveFavoriteToFirestore(
   type: string,
   item: Track | Album,
@@ -233,10 +246,16 @@ const ProfilePage = () => {
         const response = await axios.get("https://api.spotify.com/v1/me", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-        setProfile(response.data);
+        const userProfile = response.data;
+        setProfile(userProfile);
 
-        // Fetch favorite songs
-        const userId = response.data.id;
+        const userId = userProfile.id;
+        const photoUrl = userProfile?.images?.[0]?.url || "";
+
+        if (photoUrl) {
+          await saveProfilePhotoToFirestore(userId, photoUrl);
+        }
+
         fetchFavoriteSongs(userId);
         fetchFavoriteAlbums(userId);
       } catch (error) {

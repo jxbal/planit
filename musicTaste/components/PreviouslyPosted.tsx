@@ -13,18 +13,20 @@ import { Ionicons } from "@expo/vector-icons";
 
 const db = getFirestore();
 
+interface Post {
+  date: string;
+  timestamp: string;
+  albumCover: string;
+  artistName: string;
+  caption: string;
+  image: string;
+  name: string;
+  track: { name: string };
+}
+
 interface UserDocument {
   archivedPosts: {
-    [key: number]: {
-      date: string;
-      timestamp: string;
-      albumCover: string;
-      artistName: string;
-      caption: string;
-      image: string;
-      name: string;
-      track: { name: string };
-    };
+    [key: number]: Post;
   };
 }
 
@@ -35,20 +37,8 @@ const CalendarPicker = ({ userId }: { userId: string }) => {
   const [previouslyPostedDates, setPreviouslyPostedDates] = useState<string[]>(
     []
   );
-  const [selectedPost, setSelectedPost] = useState<{
-    date: string;
-    timestamp: string;
-    albumCover: string;
-    artistName: string;
-    caption: string;
-    image: string;
-    name: string;
-    track: { name: string };
-  } | null>(null);
-
-  const [archivedPosts, setArchivedPosts] = useState<
-    { date: string; image: string }[]
-  >([]);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [archivedPosts, setArchivedPosts] = useState<Post[]>([]);
 
   useEffect(() => {
     const fetchPreviouslyPostedDates = async () => {
@@ -58,18 +48,7 @@ const CalendarPicker = ({ userId }: { userId: string }) => {
 
         if (docSnap.exists()) {
           const data = docSnap.data() as UserDocument;
-          const datesWithImages = Object.values(data.archivedPosts).map(
-            (post) => ({
-              date: post.timestamp.split(",")[0],
-              timestamp: post.timestamp,
-              albumCover: post.albumCover,
-              artistName: post.artistName,
-              caption: post.caption,
-              image: post.image,
-              name: post.name,
-              track: post.track.name,
-            })
-          );
+          const datesWithImages = Object.values(data.archivedPosts);
           setArchivedPosts(datesWithImages);
           setPreviouslyPostedDates(datesWithImages.map((item) => item.date));
         } else {
@@ -83,7 +62,7 @@ const CalendarPicker = ({ userId }: { userId: string }) => {
     fetchPreviouslyPostedDates();
   }, [userId]);
 
-  const handleDateClick = (day) => {
+  const handleDateClick = (day: number): void => {
     const clickedDate = new Date(
       currentMonth.getFullYear(),
       currentMonth.getMonth(),
@@ -110,22 +89,22 @@ const CalendarPicker = ({ userId }: { userId: string }) => {
     setDayModal(false);
   };
 
-  const daysInMonth = (date) => {
+  const daysInMonth = (date: Date): number => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
 
-  const firstDayOfMonth = (date) => {
+  const firstDayOfMonth = (date: Date): number => {
     return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
   };
 
-  const formatDate = (date) => {
+  const formatDate = (date: Date): string => {
     return date.toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
     });
   };
 
-  const isToday = (day) => {
+  const isToday = (day: number): boolean => {
     const today = new Date();
     return (
       day === today.getDate() &&
@@ -134,7 +113,7 @@ const CalendarPicker = ({ userId }: { userId: string }) => {
     );
   };
 
-  const isSelected = (day) => {
+  const isSelected = (day: number): boolean => {
     return (
       day === selectedDate.getDate() &&
       currentMonth.getMonth() === selectedDate.getMonth() &&
@@ -159,12 +138,10 @@ const CalendarPicker = ({ userId }: { userId: string }) => {
     const totalDays = daysInMonth(currentMonth);
     const firstDay = firstDayOfMonth(currentMonth);
 
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(<View key={`empty-${i}`} style={styles.emptyDay} />);
     }
 
-    // Add cells for each day of the month
     for (let day = 1; day <= totalDays; day++) {
       const dayString = new Date(
         currentMonth.getFullYear(),
@@ -257,7 +234,9 @@ const CalendarPicker = ({ userId }: { userId: string }) => {
                   <Text style={styles.artistName}>
                     {selectedPost?.artistName}
                   </Text>
-                  <Text style={styles.trackName}>{selectedPost?.track}</Text>
+                  <Text style={styles.trackName}>
+                    {selectedPost.track.name}
+                  </Text>
                 </View>
               </View>
               <Text style={styles.postCaption}>{selectedPost?.caption}</Text>
@@ -324,7 +303,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-around",
-    // backgroundColor: "#Ababab",
   },
   day: {
     width: 32,

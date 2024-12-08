@@ -9,12 +9,6 @@ export default function AuthLayout() {
           title: "Login",
         }}
       />
-      <Stack.Screen
-        name="login"
-        options={{
-          title: "Sign In",
-        }}
-      />
     </Stack>
   );
 }

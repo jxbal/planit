@@ -21,12 +21,15 @@ import {
   collection,
   getDocs,
   deleteDoc,
+  onSnapshot,
+  getDoc,
 } from "firebase/firestore";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import CalendarPicker from "@/components/PreviouslyPosted";
 import { Ionicons } from "@expo/vector-icons";
-
+import { useFocusEffect } from "expo-router";
+import UserListModal from "@/components/userListModal";
 const db = getFirestore();
 
 interface Track {
@@ -57,22 +60,6 @@ async function getValidAccessToken(): Promise<string | null> {
   return accessToken;
 }
 
-async function fetchSpotifyProfile(): Promise<any> {
-  const accessToken = await getValidAccessToken();
-  if (!accessToken) return null;
-
-  try {
-    const response = await axios.get("https://api.spotify.com/v1/me", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching Spotify profile:", error);
-    return null;
-  }
-}
 async function removeFavoriteSongFromFirestore(songId: string, userId: string) {
   try {
     const songDocRef = doc(db, "users", userId, "songs", songId);
@@ -178,6 +165,10 @@ const ProfilePage = () => {
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [followersList, setFollowersList] = useState<string[]>([]);
+  const [followingList, setFollowingList] = useState<string[]>([]);
 
   const onRefresh = async () => {
     if (!profile || !profile.id) {
@@ -198,6 +189,88 @@ const ProfilePage = () => {
       setRefreshing(false);
     }
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const checkForRefresh = async () => {
+        const needsRefresh = await SecureStore.getItemAsync(
+          "profile_needs_refresh"
+        );
+        if (needsRefresh === "true") {
+          await SecureStore.deleteItemAsync("profile_needs_refresh");
+          onRefresh();
+        }
+      };
+
+      checkForRefresh();
+    }, [onRefresh])
+  );
+
+  const fetchFirebaseUserData = async (userId: string) => {
+    try {
+      const userDocRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setFollowers(userData.followers?.length || 0);
+        setFollowing(userData.following?.length || 0);
+        setFollowersList(userData.followers || []);
+        setFollowingList(userData.following || []);
+      }
+    } catch (error) {
+      console.error("Error fetching Firebase user data:", error);
+    }
+  };
+
+  useEffect(() => {
+    const initializeProfile = async () => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) return;
+
+      try {
+        const response = await axios.get("https://api.spotify.com/v1/me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const userProfile = response.data;
+        setProfile(userProfile);
+
+        const userId = userProfile.id;
+        const photoUrl = userProfile?.images?.[0]?.url || "";
+
+        if (photoUrl) {
+          await saveProfilePhotoToFirestore(userId, photoUrl);
+        }
+
+        await Promise.all([
+          fetchFavoriteSongs(userId),
+          fetchFavoriteAlbums(userId),
+          fetchFirebaseUserData(userId),
+        ]);
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+      }
+    };
+
+    initializeProfile();
+  }, []);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    const userDocRef = doc(db, "users", profile.id);
+    const unsubscribe = onSnapshot(userDocRef, (doc) => {
+      if (doc.exists()) {
+        const userData = doc.data();
+        setFollowers(userData.followers?.length || 0);
+        setFollowing(userData.following?.length || 0);
+        setFollowersList(userData.followers || []);
+        setFollowingList(userData.following || []);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [profile?.id]);
 
   const fetchFavoriteSongs = async (userId: string) => {
     try {
@@ -236,7 +309,6 @@ const ProfilePage = () => {
       console.error("Error fetching favorite albums:", error);
     }
   };
-
   useEffect(() => {
     const initializeProfile = async () => {
       const accessToken = await getValidAccessToken();
@@ -303,7 +375,7 @@ const ProfilePage = () => {
   };
 
   const handleSearchSongs = async () => {
-    if (!searchQuery.trim()) return; // Avoid showing "No results" if nothing was typed.
+    if (!searchQuery.trim()) return;
 
     const accessToken = await getValidAccessToken();
     if (!accessToken) return;
@@ -371,15 +443,34 @@ const ProfilePage = () => {
           </View>
 
           <View style={styles.follow}>
-            <View style={styles.followers}>
+            <TouchableOpacity
+              style={styles.followers}
+              onPress={() => setShowFollowersModal(true)}
+            >
               <Text style={styles.followersText}>{followers}</Text>
               <Text style={styles.followersLabel}>Followers</Text>
-            </View>
-            <View style={styles.following}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.following}
+              onPress={() => setShowFollowingModal(true)}
+            >
               <Text style={styles.followingText}>{following}</Text>
               <Text style={styles.followingLabel}>Following</Text>
-            </View>
+            </TouchableOpacity>
           </View>
+          <UserListModal
+            visible={showFollowersModal}
+            onClose={() => setShowFollowersModal(false)}
+            userIds={followersList}
+            title="Followers"
+          />
+
+          <UserListModal
+            visible={showFollowingModal}
+            onClose={() => setShowFollowingModal(false)}
+            userIds={followingList}
+            title="Following"
+          />
 
           {/* Now Playing */}
           {nowPlaying && (
@@ -473,7 +564,7 @@ const ProfilePage = () => {
                 ) : (
                   <View
                     style={[styles.gridImage, { backgroundColor: "#555" }]}
-                  /> //placeholder
+                  />
                 )}
                 {deleteAlbum && (
                   <TouchableOpacity
@@ -708,7 +799,6 @@ const styles = StyleSheet.create({
   addText: { fontSize: 24, color: "#fff", textAlign: "center" },
   calendarViewContainer: {
     flex: 1,
-    // backgroundColor: "#fff",
   },
   previouslyPostedText: {
     fontSize: 18,

@@ -25,7 +25,6 @@ import * as SecureStore from "expo-secure-store";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-// Define interfaces for type safety
 interface UserProfile {
   name: string;
   username: string;
@@ -76,11 +75,9 @@ export default function OtherUserProfile() {
       setIsLoading(true);
       setError(null);
       try {
-        // Get current user's ID from secure storage
         const currentUser = await SecureStore.getItemAsync("userProfile");
         setCurrentUserId(currentUser);
 
-        // Fetch all user data in parallel
         const [userData, followStatus, songs, albums] = await Promise.all([
           fetchUserProfile(),
           checkFollowStatus(currentUser),
@@ -88,7 +85,6 @@ export default function OtherUserProfile() {
           fetchUserCollection<AlbumData>("albums"),
         ]);
 
-        // Update all state at once
         setProfile(userData as UserProfile);
         setIsFollowing(followStatus);
         setUserStats({
@@ -360,7 +356,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   followingButton: {
-    color: "#fff",
+    backgroundColor: "#fff",
+    borderWidth: 1,
   },
   followButtonText: {
     color: "#700505",

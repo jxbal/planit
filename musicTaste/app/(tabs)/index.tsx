@@ -365,13 +365,13 @@ export default function MainPage() {
                           key={user.id}
                           style={styles.userItem}
                           onPress={() => {
-                            // if (user.id === profile.id) {
-                            //   Alert.alert(
-                            //     "View your profile in the Profile Tab"
-                            //   );
-                            // } else {
-                            router.push(`/${user.id}`);
-                            // }
+                            if (user.id === profile.id) {
+                              Alert.alert(
+                                "View your profile in the Profile Tab"
+                              );
+                            } else {
+                              router.push(`/${user.id}`);
+                            }
                             closeSearchUserModal();
                           }}
                         >
@@ -433,10 +433,6 @@ export default function MainPage() {
                               {post.track.name}
                             </Text>
                           </View>
-                          {/* <PreviewPlayer
-                            trackId={selectedTrack.id}
-                            accessToken={accessToken}
-                          /> */}
                         </View>
                         <Text style={styles.postCaption}>{post.caption}</Text>
                         {post.image && (
@@ -453,12 +449,8 @@ export default function MainPage() {
                   </ScrollView>
                 </View>
               </View>
-              <View style={styles.trendingView}>
-                {/* <ThemedText style={styles.trendingText}>Trending</ThemedText> */}
-              </View>
-              <View style={styles.recommendationsView}>
-                {/* <ThemedText style={styles.recommendationsText}>Recommendations</ThemedText> */}
-              </View>
+              <View style={styles.trendingView}></View>
+              <View style={styles.recommendationsView}></View>
             </View>
           </ScrollView>
         </View>

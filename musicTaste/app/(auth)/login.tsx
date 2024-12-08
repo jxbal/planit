@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   View,
-  TextInput,
   Button,
   StyleSheet,
   Text,
@@ -12,8 +11,6 @@ import * as AuthSession from "expo-auth-session";
 import { ResponseType } from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { auth } from "../../firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import axios from "axios";
 import { doc, setDoc, getFirestore, getDoc } from "firebase/firestore";
 
@@ -48,8 +45,6 @@ const SCOPES = [
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
@@ -158,32 +153,6 @@ const LoginPage: React.FC = () => {
       }
     }
   }
-  const handleLogin = () => {
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-        router.replace("/(tabs)");
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-
-        if (errorCode === "auth/invalid-email") {
-          Alert.alert("Login Failed", "Invalid email address format.");
-        } else if (errorCode === "auth/user-not-found") {
-          Alert.alert("Login Failed", "No user found with this email.");
-        } else if (errorCode === "auth/wrong-password") {
-          Alert.alert("Login Failed", "Incorrect password.");
-        } else {
-          Alert.alert("Login Failed", errorMessage);
-        }
-      });
-  };
-
-  const handleSignUp = () => {
-    router.push("/signup");
-  };
-
   const handleSpotifyLogin = async () => {
     try {
       const result = await promptAsync();
@@ -200,24 +169,6 @@ const LoginPage: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Welcome to Nonstop!</Text>
-
-        {/* <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <Button title="Login" onPress={handleLogin} />
-        <Button title="Sign Up" onPress={handleSignUp} /> */}
 
         <View style={styles.separator} />
         <Button

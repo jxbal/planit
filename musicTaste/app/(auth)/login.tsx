@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   View,
-  TextInput,
   Button,
   StyleSheet,
   Text,
@@ -12,32 +11,28 @@ import * as AuthSession from "expo-auth-session";
 import { ResponseType } from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { auth } from "../../firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import axios from "axios";
+import {db} from "../../firebaseConfig";
 import { doc, setDoc, getFirestore, getDoc } from "firebase/firestore";
 
 const CLIENT_ID = "d442d42b1e6f4b37ad8305f045d5d160";
 const CLIENT_SECRET = "9f641cacf31e4745a6fd9a0d3de5e951";
 
-const db = getFirestore();
+// const db = getFirestore();
 
 const developmentRedirectURI = AuthSession.makeRedirectUri({
   scheme: "musictaste",
   path: "spotify-auth",
 });
 
-// Production URI
 const productionRedirectURI = AuthSession.makeRedirectUri({
   scheme: "musictaste",
   path: "spotify-auth",
 });
 
-// Log both URIs to see what needs to be registered
 console.log("Development Redirect URI:", developmentRedirectURI);
 console.log("Production Redirect URI:", productionRedirectURI);
 
-// Use the development URI during development
 const REDIRECT_URI = developmentRedirectURI;
 
 const AUTH_ENDPOINT = "https://accounts.spotify.com/authorize";
@@ -47,16 +42,12 @@ const SCOPES = [
   "user-read-email",
   "user-read-currently-playing",
   "user-read-playback-state",
-  // Add other scopes as needed
 ];
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // Configure the authentication request
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: CLIENT_ID,
@@ -120,15 +111,13 @@ const LoginPage: React.FC = () => {
     name: string
   ) {
     try {
-      // First, try to retrieve the existing document to preserve posts
-      const profileDocRef = doc(db, "profiles", userID);
-      const profileDocSnap = await getDoc(profileDocRef);
+      const userDocRef = doc(db, "profiles", userID);
+      const userDocSnap = await getDoc(userDocRef);
       const usersDocRef = doc(db, "users", userID);
       const usersDocSnap = await getDoc(usersDocRef);
 
-      // Get existing posts if they exist
-      const existingPosts = profileDocSnap.exists()
-        ? profileDocSnap.data().posts || []
+      const existingPosts = userDocSnap.exists()
+        ? userDocSnap.data().posts || []
         : [];
       const archivedPosts = usersDocSnap.exists()
         ? usersDocSnap.data().archivedPosts || []
@@ -169,32 +158,6 @@ const LoginPage: React.FC = () => {
       }
     }
   }
-  const handleLogin = () => {
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-        router.replace("/(tabs)");
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-
-        if (errorCode === "auth/invalid-email") {
-          Alert.alert("Login Failed", "Invalid email address format.");
-        } else if (errorCode === "auth/user-not-found") {
-          Alert.alert("Login Failed", "No user found with this email.");
-        } else if (errorCode === "auth/wrong-password") {
-          Alert.alert("Login Failed", "Incorrect password.");
-        } else {
-          Alert.alert("Login Failed", errorMessage);
-        }
-      });
-  };
-
-  const handleSignUp = () => {
-    router.push("/signup");
-  };
-
   const handleSpotifyLogin = async () => {
     try {
       const result = await promptAsync();
@@ -211,24 +174,6 @@ const LoginPage: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Welcome to Nonstop!</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <Button title="Login" onPress={handleLogin} />
-        <Button title="Sign Up" onPress={handleSignUp} />
 
         <View style={styles.separator} />
         <Button
@@ -255,7 +200,7 @@ const LoginPage: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0f0f0", // Matches the container background
+    backgroundColor: "#f0f0f0",
   },
   container: {
     flex: 1,
@@ -280,7 +225,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   separator: {
-    marginVertical: 10,
+    marginVertical: 0,
   },
   tokenText: {
     marginTop: 10,

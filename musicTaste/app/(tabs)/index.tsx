@@ -1,4 +1,3 @@
-
 import {
   StyleSheet,
   ScrollView,
@@ -33,6 +32,7 @@ import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Localization from "expo-localization";
 import { StackActions } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 
 const db = getFirestore();
 
@@ -65,7 +65,7 @@ export default function MainPage() {
   const [feed, setFeed] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchUserModal, setSearchUserModal] = useState(false);
-
+  const router = useRouter();
   const onRefresh = async () => {
     setRefreshing(true);
     fetchPosts(profile.id);
@@ -225,7 +225,7 @@ export default function MainPage() {
         results.push({
           id: doc.id,
           name: userData?.name || "Unknown User",
-          profile_photo: userData.profile_photo || null,
+          profile_photo: userData.profilePhoto || null,
           username: userData.username || doc.id,
         });
       });
@@ -365,27 +365,24 @@ export default function MainPage() {
                           key={user.id}
                           style={styles.userItem}
                           onPress={() => {
-                            // Handle user selection here
-                            setProfile(user);
+                            if (user.id === profile.id) {
+                              Alert.alert(
+                                "View your profile in the Profile Tab"
+                              );
+                            } else {
+                              router.push(`/${user.id}`);
+                            }
                             closeSearchUserModal();
                           }}
                         >
-                          <View style={styles.userProfilePhoto}>
-                            {user.profile_photo ? (
-                              <Image
-                                source={{ uri: user.profile_photo }}
-                                style={styles.profileImage}
-                              />
-                            ) : (
-                              <View style={styles.defaultProfileImage}>
-                                <Ionicons
-                                  name="person"
-                                  size={24}
-                                  color="#666"
-                                />
-                              </View>
-                            )}
-                          </View>
+                          <Image
+                            source={{
+                              uri:
+                                user.profile_photo ||
+                                "https://via.placeholder.com/50",
+                            }}
+                            style={styles.userProfilePhoto}
+                          />
                           <View style={styles.userDetails}>
                             <Text style={styles.userDisplayName}>
                               {user.name}
@@ -436,10 +433,6 @@ export default function MainPage() {
                               {post.track.name}
                             </Text>
                           </View>
-                          {/* <PreviewPlayer
-                            trackId={selectedTrack.id}
-                            accessToken={accessToken}
-                          /> */}
                         </View>
                         <Text style={styles.postCaption}>{post.caption}</Text>
                         {post.image && (
@@ -456,12 +449,8 @@ export default function MainPage() {
                   </ScrollView>
                 </View>
               </View>
-              <View style={styles.trendingView}>
-                {/* <ThemedText style={styles.trendingText}>Trending</ThemedText> */}
-              </View>
-              <View style={styles.recommendationsView}>
-                {/* <ThemedText style={styles.recommendationsText}>Recommendations</ThemedText> */}
-              </View>
+              <View style={styles.trendingView}></View>
+              <View style={styles.recommendationsView}></View>
             </View>
           </ScrollView>
         </View>
@@ -471,14 +460,12 @@ export default function MainPage() {
 }
 
 const styles = StyleSheet.create({
-  // mainScroll: {backgroundColor: '#ffffff'},
   safeAreaViewHome: {
     flex: 1,
   },
   mainPage: {
     flex: 1,
     paddingHorizontal: 20,
-    // backgroundColor: '#ffffff',
   },
   username: {
     marginTop: 40,
@@ -555,9 +542,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   userProfilePhoto: {
-    width: 40,
-    height: 40,
-    marginRight: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
   },
   profileImage: {
     width: "100%",
@@ -597,17 +585,6 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   closeSearchUserModal: { marginTop: -35, marginRight: -300 },
-  // userSearchBarContainer: {
-  //   width: 300,
-  //   paddingVertical: 10,
-  // },
-  // userSearchBar: {
-  //   backgroundColor: "#f0f0f0",
-  //   padding: 12,
-  //   borderRadius: 8,
-  //   fontSize: 16,
-  //   width: "100%",
-  // },
   loader: {
     position: "absolute",
     right: 10,
@@ -659,7 +636,6 @@ const styles = StyleSheet.create({
   },
   feedContainer: {
     marginTop: 50,
-    // backgroundColor: '#ffffff',
   },
   feed: {
     marginTop: 30,

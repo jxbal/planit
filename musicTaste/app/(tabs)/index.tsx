@@ -228,6 +228,8 @@ export default function MainPage() {
           profile_photo: userData.profilePhoto || null,
           username: userData.username || doc.id,
         });
+        console.log("hello")
+        console.log(userData.profilePhoto)
       });
       setUserSearchResults(results);
     } catch (error) {

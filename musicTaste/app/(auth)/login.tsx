@@ -111,24 +111,24 @@ const LoginPage: React.FC = () => {
     name: string
   ) {
     try {
-      const userDocRef = doc(db, "profiles", userID);
-      const userDocSnap = await getDoc(userDocRef);
+      const profilesDocRef = doc(db, "profiles", userID);
+      const profilesDocSnap = await getDoc(profilesDocRef);
       const usersDocRef = doc(db, "users", userID);
       const usersDocSnap = await getDoc(usersDocRef);
 
-      const existingPosts = userDocSnap.exists()
-        ? userDocSnap.data().posts || []
+      const existingPosts = usersDocSnap.exists()
+        ? usersDocSnap.data().posts || []
         : [];
       const archivedPosts = usersDocSnap.exists()
         ? usersDocSnap.data().archivedPosts || []
         : [];
-      const existingGroup = usersDocSnap.exists()
-        ? profileDocSnap.data().chatGroup || []
+      const existingGroup = profilesDocSnap.exists()
+        ? profilesDocSnap.data().chatGroup || []
         : [];
 
       console.log("Attempting to save user:", { userID, username, name });
       await setDoc(
-        profileDocRef,
+        usersDocRef,
         {
           username: username,
           name: name,

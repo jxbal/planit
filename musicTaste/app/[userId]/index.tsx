@@ -86,16 +86,13 @@ export default function OtherUserProfile() {
         ]);
 
         setProfile(userData as UserProfile);
-
         setIsFollowing(followStatus);
-
         setUserStats({
           followers: userData?.followers?.length || 0,
           following: userData?.following?.length || 0,
           favoriteSongs: songs,
           favoriteAlbums: albums,
         });
-
       } catch (err) {
         console.error("Error initializing profile:", err);
         setError("Failed to load profile data");
@@ -112,7 +109,8 @@ export default function OtherUserProfile() {
   const fetchUserProfile = async (): Promise<UserProfile> => {
     const userDocRef = doc(db, "users", userId as string);
     const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap) {
+    // im always getting an error here, with no file found. Is is my setting's problem?
+    if (!userDocSnap.exists()) {
       throw new Error("User not found");
     }
     return userDocSnap.data() as UserProfile;

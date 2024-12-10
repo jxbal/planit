@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import { db, auth } from "../../firebaseConfig";
-import { getDoc, doc, updateDoc } from "firebase/firestore";
+import { getDoc, doc, updateDoc, serverTimestamp, arrayUnion, DocumentReference, DocumentData } from "firebase/firestore";
 import { FadeInRight } from "react-native-reanimated";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import * as SecureStore from "expo-secure-store";
@@ -52,8 +52,8 @@ const Chat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   //   const [friendList, setFriendList] = useState([]);
-  //   const [chatRef, setChatRef] = useState([]);
-  const [currentChatName, setCurrentChatName] = useState([]);
+  const chatRef = useRef(null);
+  const [currentChatName, setCurrentChatName] = useState("");
   const [currentChatContent, setCurrentChatContent] = useState([]);
   const [currentChatNickName, setCurrentChatNickName] = useState([]);
   const [chatList, setChatList] = useState([]);
@@ -63,23 +63,39 @@ const Chat = () => {
   //   const userID = profile.id;
   const [userID, setUserID] = useState("");
   //   const userID = auth.currentUser.uid;
-  let chatRef;
-//   const [chatRef, setChatRef] = useState([]);
+  // let chatRef;
+  //   const [chatRef, setChatRef] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   let isDM = false; // either direct message or group chat
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [groupName, setGroupName] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  
+  const [groupName, setGroupName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [userImg, setUserImg] = useState([]);
+  // const [chatYou, setChatYou] = useState('you'); // 群友的关怀
+
   const handleChatSelect = async (chat) => {
-    chatRef = doc(db, "chats", chat.UID);
+    chatRef.current = doc(db, "chats", chat.UID);
+    console.log(chatRef)
     // setChatRef(doc(db, "chats", chat.UID));
-    const chatSnap = await getDoc(chatRef);
+    const chatSnap = await getDoc(chatRef.current);
     const currentChat = chatSnap.data();
+    console.log(currentChat)
     setCurrentChatNickName(currentChat.nickname);
     setCurrentChatContent(currentChat.content);
     // if ("name" in currentChat && currentChat.name != "") {
     setCurrentChatName(currentChat.name);
+    // const chatYouList = {};
+
+    setUserImg(currentChat.profileImg);
+    // dynamic profile set
+    // Object.keys(currentChat.nickname).map((chatYouID) => {
+    //   const youRef = doc(db, "users", `${chatYouID}`);
+    //   const youSnap = await getDoc(youRef);
+    //   console.log(youSnap.data)
+    //   // chatYouList[chatYouID] = youSnap.
+    //   chatYouList.push();
+    // });
+
     // }
   };
 
@@ -107,20 +123,22 @@ const Chat = () => {
   const handleSendMessage = async () => {
     if (inputMessage.trim()) {
       const newMessage = {
-        user: userID,
         dialog: inputMessage.trim(),
         // reply: [],  // Ensure reply is always an object
-        // time: Date.now(),  // Use timestamp or Date object
+        // time: serverTimestamp(),
+        user: userID,
       };
 
       const updatedChatContent = [...currentChatContent, newMessage];
       setCurrentChatContent(updatedChatContent);
 
-      console.log("Updated chat content:", updatedChatContent);
+      // console.log("Updated chat content:", updatedChatContent);
+
+      console.log(chatRef)
 
       try {
-        await updateDoc(chatRef, {
-          content: updatedChatContent, // Make sure content is always updated correctly
+        await updateDoc(chatRef.current, {
+          content: arrayUnion(newMessage),
         });
         console.log("Message sent!");
       } catch (error) {
@@ -139,15 +157,14 @@ const Chat = () => {
     try {
       if (userID) {
         // Reference to the specific user profile by UID
-        const userRef = doc(db, "profiles", `${userID}`);
-        const docSnap = await getDoc(userRef);
+        const profileRef = doc(db, "profiles", `${userID}`);
+        const docSnap = await getDoc(profileRef);
         const chatInfos = [];
         if (docSnap.exists()) {
           for (let i = 0; i < docSnap.data().chatGroup.length; i++) {
             const chatUID = docSnap.data().chatGroup[i];
             const chatSnap = await getDoc(doc(db, "chats", chatUID));
             const imageName = chatSnap.data().groupImg;
-            // console.log(chatSnap.data())
             const imgPath = imageName
               ? imageName
               : require("../../assets/images/3cherry.png");
@@ -195,7 +212,7 @@ const Chat = () => {
   }
 
   const handleCreate = () => {
-    setIsModalOpen(false); 
+    setIsModalOpen(false);
     setIsCreateModalOpen(true);
   };
 
@@ -260,10 +277,16 @@ const Chat = () => {
                     <View
                       style={[styles.row, isUserMessage && styles.rightRow]}
                     >
+                      {/* {console.log(dialogInfo.user)} */}
                       <Image
-                        source={require("../../assets/images/1.png")}
+                        source={
+                          userImg[dialogInfo.user]
+                            ? { uri: userImg[dialogInfo.user] }
+                            : require("../../assets/images/1.png")
+                        }
                         style={styles.itemImage}
                       />
+
                       <Text style={styles.usernameText}>
                         {currentChatNickName[dialogInfo.user]}
                       </Text>
@@ -282,102 +305,101 @@ const Chat = () => {
                 );
               })}
         </ScrollView>
-
-        {/* Input Box */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type your message..."
-            value={inputMessage}
-            onChangeText={setInputMessage}
-          />
-          <TouchableOpacity
-            style={styles.sendButton}
-            onPress={handleSendMessage}
+        {currentChatName != "" && (
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Type your message..."
+              value={inputMessage}
+              onChangeText={setInputMessage}
+            />
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleSendMessage}
+            >
+              <Text style={styles.sendButtonText}>Send</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+      <Modal
+        transparent={true}
+        visible={isModalOpen}
+        animationType="fade"
+        onRequestClose={() => setIsModalOpen(false)} // Close modal on Android back press
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setIsModalOpen(false)} // Close modal when clicking outside the modal
+          activeOpacity={1} // Ensure background doesn't change opacity
+        >
+          <View
+            style={styles.modalContainer}
+            onStartShouldSetResponder={(e) => e.target === e.currentTarget} // Prevent closing when clicking inside modal
           >
-            <Text style={styles.sendButtonText}>Send</Text>
-          </TouchableOpacity>
-        </View>
-      </View><Modal
-  transparent={true}
-  visible={isModalOpen}
-  animationType="fade"
-  onRequestClose={() => setIsModalOpen(false)} // Close modal on Android back press
->
-  <TouchableOpacity
-    style={styles.modalOverlay} 
-    onPress={() => setIsModalOpen(false)} // Close modal when clicking outside the modal
-    activeOpacity={1} // Ensure background doesn't change opacity
-  >
-    <View
-      style={styles.modalContainer}
-      onStartShouldSetResponder={(e) => e.target === e.currentTarget} // Prevent closing when clicking inside modal
-    >
-      <TouchableOpacity
-        style={styles.modalButton}
-        onPress={handleCreate}
+            <TouchableOpacity style={styles.modalButton} onPress={handleCreate}>
+              <Text style={styles.modalButtonText}>Create</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.modalButton} onPress={handleJoin}>
+              <Text style={styles.modalButtonText}>Join</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      <Modal
+        transparent={true}
+        visible={isCreateModalOpen}
+        animationType="fade"
+        onRequestClose={() => setIsCreateModalOpen(false)} // Close modal on Android back press
       >
-        <Text style={styles.modalButtonText}>Create</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setIsCreateModalOpen(false)} // Close modal when clicking outside the modal
+          activeOpacity={1} // Ensure background doesn't change opacity
+        >
+          <View
+            style={styles.modalContainer}
+            onStartShouldSetResponder={(e) => e.target === e.currentTarget} // Prevent closing when clicking inside modal
+          >
+            <Text style={styles.modalTitle}>Create New Group Chat</Text>
 
-      <TouchableOpacity
-        style={styles.modalButton}
-        onPress={handleJoin}
-      >
-        <Text style={styles.modalButtonText}>Join</Text>
-      </TouchableOpacity>
-    </View>
-  </TouchableOpacity>
-</Modal>
-<Modal
-  transparent={true}
-  visible={isCreateModalOpen}
-  animationType="fade"
-  onRequestClose={() => setIsCreateModalOpen(false)} // Close modal on Android back press
->
-  <TouchableOpacity
-    style={styles.modalOverlay} 
-    onPress={() => setIsCreateModalOpen(false)} // Close modal when clicking outside the modal
-    activeOpacity={1} // Ensure background doesn't change opacity
-  >
-    <View
-      style={styles.modalContainer}
-      onStartShouldSetResponder={(e) => e.target === e.currentTarget} // Prevent closing when clicking inside modal
-    >
-      <Text style={styles.modalTitle}>Create New Group Chat</Text>
+            {/* Group Name Input */}
+            <TextInput
+              style={styles.inputCreate}
+              placeholder="Enter Group Name"
+              value={groupName}
+              onChangeText={setGroupName}
+            />
 
-      {/* Group Name Input */}
-      <TextInput
-        style={styles.inputCreate}
-        placeholder="Enter Group Name"
-        value={groupName}
-        onChangeText={setGroupName}
-      />
+            {/* Search Bar */}
+            <Text style={styles.modelSecondTitle}>Invite User</Text>
+            <TextInput
+              style={styles.inputCreate}
+              placeholder="Search Users"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
 
-      {/* Search Bar */}
-      <Text style={styles.modelSecondTitle}>Invite User</Text>
-      <TextInput
-        style={styles.inputCreate}
-        placeholder="Search Users"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
-
-      {/* Buttons */}
-      <TouchableOpacity
-        style={styles.modalButton}
-        onPress={() => {
-          // Handle creating the group chat with the group name and search query
-          console.log('Creating group:', groupName, 'with search:', searchQuery);
-          setIsCreateModalOpen(false); // Close the second modal after creating
-        }}
-      >
-        <Text style={styles.modalButtonText}>Create Group</Text>
-      </TouchableOpacity>
-    </View>
-  </TouchableOpacity>
-</Modal>
-
+            {/* Buttons */}
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                // Handle creating the group chat with the group name and search query
+                console.log(
+                  "Creating group:",
+                  groupName,
+                  "with search:",
+                  searchQuery
+                );
+                setIsCreateModalOpen(false); // Close the second modal after creating
+              }}
+            >
+              <Text style={styles.modalButtonText}>Create Group</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -541,12 +563,12 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 20,
     borderRadius: 10,
     width: 300,
@@ -557,38 +579,38 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     padding: 18,
-    backgroundColor: '#e23e57',
+    backgroundColor: "#e23e57",
     borderRadius: 5,
     marginBottom: 20,
     height: 60,
   },
   modalButtonText: {
-    color: 'white',
-    textAlign: 'center',
+    color: "white",
+    textAlign: "center",
     fontSize: 20,
   },
   closeButton: {
     marginTop: 20,
     padding: 10,
-    backgroundColor: '#ff0000',
+    backgroundColor: "#ff0000",
     borderRadius: 5,
   },
   closeButtonText: {
-    color: 'white',
-    textAlign: 'center',
+    color: "white",
+    textAlign: "center",
   },
-  inputCreate:{
-    width: '100%',
+  inputCreate: {
+    width: "100%",
     height: 60,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderWidth: 1,
     marginBottom: 10,
     paddingLeft: 10,
     borderRadius: 5,
   },
-  modelSecondTitle:{
+  modelSecondTitle: {
     height: 50,
-    fontSize:20,
+    fontSize: 20,
     padding: 10,
   },
 });

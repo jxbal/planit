@@ -1,3 +1,5 @@
+// i might not be able to recieve text message for a while, worst case senario send me email or at me on github
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -11,10 +13,27 @@ import {
   TextInput,
   SafeAreaView,
   Modal,
+  ImageBackground,
+  Alert,
 } from "react-native";
 import axios from "axios";
 import { db, auth } from "../../firebaseConfig";
-import { getDoc, doc, updateDoc, serverTimestamp, arrayUnion, DocumentReference, DocumentData } from "firebase/firestore";
+import {
+  getDoc,
+  doc,
+  updateDoc,
+  serverTimestamp,
+  arrayUnion,
+  DocumentReference,
+  DocumentData,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+  Timestamp,
+  addDoc,
+} from "firebase/firestore";
 import { FadeInRight } from "react-native-reanimated";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import * as SecureStore from "expo-secure-store";
@@ -48,11 +67,20 @@ async function fetchSpotifyProfile(): Promise<any> {
   }
 }
 
+interface UserProfile {
+  id: string;
+  name: string;
+  profile_photo?: string;
+  username: string;
+}
+
 const Chat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   //   const [friendList, setFriendList] = useState([]);
   const chatRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userSearchResults, setUserSearchResults] = useState<UserProfile[]>([]);
   const [currentChatName, setCurrentChatName] = useState("");
   const [currentChatContent, setCurrentChatContent] = useState([]);
   const [currentChatNickName, setCurrentChatNickName] = useState([]);
@@ -66,20 +94,19 @@ const Chat = () => {
   // let chatRef;
   //   const [chatRef, setChatRef] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  let isDM = false; // either direct message or group chat
+  // let isDM = false; // either direct message or group chat
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userImg, setUserImg] = useState([]);
   // const [chatYou, setChatYou] = useState('you'); // 群友的关怀
+  const inviteQueue = useRef<Set<string>>(new Set());
 
   const handleChatSelect = async (chat) => {
     chatRef.current = doc(db, "chats", chat.UID);
-    console.log(chatRef)
     // setChatRef(doc(db, "chats", chat.UID));
     const chatSnap = await getDoc(chatRef.current);
     const currentChat = chatSnap.data();
-    console.log(currentChat)
     setCurrentChatNickName(currentChat.nickname);
     setCurrentChatContent(currentChat.content);
     // if ("name" in currentChat && currentChat.name != "") {
@@ -100,6 +127,49 @@ const Chat = () => {
   };
 
   const [inputMessage, setInputMessage] = useState("");
+
+
+  const searchUserProfile = async (userSearchQuery: string) => {
+    if (!userSearchQuery.trim()) {
+      setUserSearchResults([]);
+      return;
+    }
+
+    // setIsLoading(true); 
+    try {
+      const userDocRef = collection(db, "users");
+      const q = query(
+        userDocRef,
+        where("username", ">=", userSearchQuery.toLowerCase()),
+        where("username", "<=", userSearchQuery.toLowerCase() + "\uf8ff"),
+        limit(10)
+      );
+      const querySnapshot = await getDocs(q);
+      const results: UserProfile[] = [];
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        results.push({
+          id: doc.id,
+          name: userData?.name || "Unknown User",
+          profile_photo: userData.profilePhoto || null,
+          username: userData.username || doc.id,
+        });
+      });
+      setUserSearchResults(results);
+    } catch (error) {
+      console.error("Error fetching profile", error);
+    } finally {
+      // setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchUserProfile(userSearchQuery);
+    }, 500);
+  
+    return () => clearTimeout(timeoutId);
+  }, [userSearchQuery]);
 
   useEffect(() => {
     const initializeProfile = async () => {
@@ -132,15 +202,10 @@ const Chat = () => {
       const updatedChatContent = [...currentChatContent, newMessage];
       setCurrentChatContent(updatedChatContent);
 
-      // console.log("Updated chat content:", updatedChatContent);
-
-      console.log(chatRef)
-
       try {
         await updateDoc(chatRef.current, {
           content: arrayUnion(newMessage),
         });
-        console.log("Message sent!");
       } catch (error) {
         console.error("Error sending message:", error);
       }
@@ -211,13 +276,47 @@ const Chat = () => {
     );
   }
 
+const loadUserInfo = async () => {
+  // =========== todo: read all the invited user's id and profile and write it into userChatRoom to return ===========
+  // --------- oh and maybe create the obj here, or make it a global value (though i don't see the reason) --------------
+  // -------- and also save the chatroom id into user's profile -------------- 
+
+  let nickname: { [key: string]: any } = {};
+  let profileImg: { [key: string]: any } = {};
+  inviteQueue.current.forEach(async (inviteID) => {
+      const invitedRef = doc(db, "users", inviteID);
+      const invitedSnap = await getDoc(invitedRef);
+      nickname[inviteID] = invitedSnap.data().name;
+      profileImg[inviteID] = invitedSnap.data().profilePhoto;
+  });
+  
+  const newChatRoom = {
+    content: [],
+    name : groupName,
+    nickname: nickname,
+    profileImg: profileImg,
+    createdBy: userID,
+  };
+
+  const chatroomsRef = collection(db, "chats");
+  const docRef = await addDoc(chatroomsRef, newChatRoom);
+  
+  const userRef = doc(db, "profiles", userID);
+  await updateDoc(userRef, {
+    chatGroup: arrayUnion(docRef.id),
+  })
+  fetchUserData();
+}
+
+
   const handleCreate = () => {
     setIsModalOpen(false);
     setIsCreateModalOpen(true);
+    inviteQueue.current.clear;
+    inviteQueue.current.add(userID);
   };
 
   const handleJoin = () => {
-    console.log("Join Chat");
     setIsModalOpen(false);
   };
 
@@ -377,22 +476,66 @@ const Chat = () => {
             <TextInput
               style={styles.inputCreate}
               placeholder="Search Users"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={userSearchQuery}
+              onChangeText={setUserSearchQuery}
             />
+
+            {/* Conditional dropdown display */}
+            {
+              <ScrollView
+                style={styles.userSearchResults}
+                contentContainerStyle={styles.searchResultContainer}
+              >
+                {userSearchResults.length > 0 ? (
+                  userSearchResults.map((user) => (
+                    <TouchableOpacity
+                      key={user.id}
+                      style={styles.userItem}
+                      onPress={() => {
+                        inviteQueue.current.add(user.id);
+                      }}
+                    >
+                      <ImageBackground
+                        source={{
+                          uri:
+                            user.profile_photo ||
+                            "https://via.placeholder.com/50",
+                        }}
+                        style={styles.userProfilePhoto}
+                      >
+                      <AntDesign
+                        name="pluscircleo"
+                        size={24}
+                        color="white" 
+                        style={styles.iconStyle}
+                      />
+                      </ImageBackground>
+                      <View style={styles.userDetails}>
+                        <Text style={styles.userDisplayName}>{user.name}</Text>
+                        <Text style={styles.userUsername}>
+                          @{user.username}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={styles.noResultsText}>No users found</Text>
+                )}
+              </ScrollView>}
 
             {/* Buttons */}
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => {
-                // Handle creating the group chat with the group name and search query
-                console.log(
-                  "Creating group:",
-                  groupName,
-                  "with search:",
-                  searchQuery
-                );
-                setIsCreateModalOpen(false); // Close the second modal after creating
+                if(!groupName){
+                  Alert.alert("Note", "Please enter a name");
+                }
+                // ========= not yet have invite feature ===========
+                else{
+                  // const UID = groupName + userID + Date.now();
+                  loadUserInfo();
+                  setIsCreateModalOpen(false);
+                }
               }}
             >
               <Text style={styles.modalButtonText}>Create Group</Text>
@@ -612,6 +755,48 @@ const styles = StyleSheet.create({
     height: 50,
     fontSize: 20,
     padding: 10,
+  },
+
+  userProfilePhoto: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  profileImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+  },
+  defaultProfileImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  userDetails: {
+    flex: 1,
+  },
+  userDisplayName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  userUsername: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
+  },
+  noResultsText: {
+    textAlign: "center",
+    color: "#999",
+  },
+  iconStyle: {
+    position: 'absolute',
+    top: 30, 
+    right: -5,
   },
 });
 

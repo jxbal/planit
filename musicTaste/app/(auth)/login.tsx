@@ -12,12 +12,13 @@ import { ResponseType } from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import axios from "axios";
+import {db} from "../../firebaseConfig";
 import { doc, setDoc, getFirestore, getDoc } from "firebase/firestore";
 
 const CLIENT_ID = "d442d42b1e6f4b37ad8305f045d5d160";
 const CLIENT_SECRET = "9f641cacf31e4745a6fd9a0d3de5e951";
 
-const db = getFirestore();
+// const db = getFirestore();
 
 const developmentRedirectURI = AuthSession.makeRedirectUri({
   scheme: "musictaste",

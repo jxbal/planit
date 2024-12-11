@@ -32,6 +32,7 @@ import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Localization from "expo-localization";
 import { StackActions } from "@react-navigation/native";
+import { fetchSpotifyProfile } from "@/fetchSpotifyProfile";
 
 const db = getFirestore();
 
@@ -254,31 +255,27 @@ export default function MainPage() {
     }
     return accessToken;
   }
-
-  async function fetchSpotifyProfile(): Promise<any> {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) return null;
-
-    try {
-      const response = await axios.get("https://api.spotify.com/v1/me", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching Spotify profile:", error);
-      return null;
-    }
-  }
-
+  
   useEffect(() => {
-    const fetchProfile = async () => {
-      const profileData = await fetchSpotifyProfile();
-      if (profileData) setProfile(profileData);
+    const initializeProfile = async () => {
+      try {
+        const profileData = await fetchSpotifyProfile(); // Fetch profile using the shared function
+        if (profileData) {
+          setProfile(profileData); // Set profile state
+          console.log("Spotify profile fetched:", profileData);
+        } else {
+          console.error("Failed to fetch Spotify profile");
+          Alert.alert("Error", "Failed to fetch Spotify profile. Please log in again.");
+        }
+      } catch (error) {
+        console.error("Error initializing profile:", error);
+        Alert.alert("Error", "Something went wrong while fetching your profile.");
+      }
     };
-    fetchProfile();
+  
+    initializeProfile();
   }, []);
+  
 
   const handleUserSearch = (text: string) => {
     setUserSearchQuery(text);

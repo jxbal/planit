@@ -27,6 +27,7 @@ import * as SecureStore from "expo-secure-store";
 import CalendarPicker from "@/components/PreviouslyPosted";
 import { Ionicons } from "@expo/vector-icons";
 
+import { fetchSpotifyProfile } from "../../fetchSpotifyProfile";
 const db = getFirestore();
 
 interface Track {
@@ -57,22 +58,6 @@ async function getValidAccessToken(): Promise<string | null> {
   return accessToken;
 }
 
-async function fetchSpotifyProfile(): Promise<any> {
-  const accessToken = await getValidAccessToken();
-  if (!accessToken) return null;
-
-  try {
-    const response = await axios.get("https://api.spotify.com/v1/me", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching Spotify profile:", error);
-    return null;
-  }
-}
 async function removeFavoriteSongFromFirestore(songId: string, userId: string) {
   try {
     const songDocRef = doc(db, "users", userId, "songs", songId);
@@ -226,27 +211,17 @@ const ProfilePage = () => {
 
   useEffect(() => {
     const initializeProfile = async () => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) return;
-
-      try {
-        const response = await axios.get("https://api.spotify.com/v1/me", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        setProfile(response.data);
-
-        // Fetch favorite songs
-        const userId = response.data.id;
-        fetchFavoriteSongs(userId);
-        fetchFavoriteAlbums(userId);
-      } catch (error) {
-        console.error("Error fetching Spotify profile:", error);
+      const profile = await fetchSpotifyProfile(); // Use the shared function
+      if (profile) {
+        setProfile(profile); // Set the profile state
+        fetchFavoriteSongs(profile.id); // Fetch user's favorite songs
+        fetchFavoriteAlbums(profile.id); // Fetch user's favorite albums
       }
     };
-
+  
     initializeProfile();
   }, []);
-
+  git
   const handleRemoveFavoriteSong = async (songId: string) => {
     const userId = await SecureStore.getItemAsync("userProfile");
     if (!userId) {

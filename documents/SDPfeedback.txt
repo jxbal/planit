@@ -25,14 +25,16 @@ PROJECT SCHEDULE SECTION:
 
 OVERALL ASSESSMENT:
    Category                          Points
-   Project Deliverables               0.5
+   Project Deliverables               1.0
    Project Resources                  1.0
    Project Organization               1.0
    Project Schedule                   2.0
                                      =====
-   Subtotal                           4.5
+   Subtotal                           5.0
    ------------------------------------------------------
-   Total Percentage: 4.5/5 = 90% which is an A-minus
+   Total Percentage: 5/5 = 100% which is an A-plus
+
+Revised 2024-12-16  full credit.
 
 Add those tasks into the deliverables section by the end of the semester for
 full credit on this document.
